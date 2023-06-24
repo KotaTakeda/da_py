@@ -1,8 +1,6 @@
 # data assimilation py
 
-## requirements
-
+## install
 ```
-pip install --upgrade pip
-pip install -r requirements.txt
+pip install git+https://github.com/KotaTakeda/da_py.git
 ```
