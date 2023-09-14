@@ -3,7 +3,7 @@ from functools import cache, partial
 from multiprocessing import get_context
 
 import numpy as np
-from localization import calc_dist, gaspari_cohn
+from da.localization import calc_dist, gaspari_cohn
 from numpy import eye, random, sqrt, trace
 from numpy.linalg import inv
 from scipy.linalg import sqrtm
