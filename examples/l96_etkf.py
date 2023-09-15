@@ -1,7 +1,8 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from da.l96 import gen_l96, rk4
+from da.l96 import gen_l96
+from da.scheme import rk4
 from da.loss import loss_rms
 from da.visualize import plot_loss
 from da.etkf import ETKF

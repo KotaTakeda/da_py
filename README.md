@@ -10,6 +10,8 @@ pip install git+https://github.com/KotaTakeda/da_py.git
 ### Commonly use
 - jupyter-notebook
 - matplotlib
+- seaborn
+- plotly
 - pandas
 - tqdm
 
