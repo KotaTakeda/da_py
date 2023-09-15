@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from da.l96 import gen_l96, rk4
@@ -16,9 +17,9 @@ Dt = 0.05 # 6hに相当
 
 # モデルの遷移関数(非線形)
 # 0.01ずつ時間発展させる
-# dtは同化step
-def M(x, dt):
-    for i in range(int(dt/0.01)):
+# Dtは同化step
+def M(x, Dt):
+    for i in range(int(Dt/0.01)):
         x = rk4(lorenz, 0, x, 0.01)
     return x
 
@@ -33,20 +34,23 @@ Q = np.zeros((J, J))
 
 
 # Generate test data
-N = 360*20*2  # 2年分に相当
-dt = 0.01
-x0 = F*np.ones(J)
-x0[19] *= 1.001
-x_true = np.zeros((N, len(x0)))
-x = x0
-x_true[0] = x[:]
+if os.path.exists("x_true.npy"):
+    x_true = np.load("x_true.npy")
+else:
+    N = 360*20*2  # 2年分に相当
+    dt = 0.01
+    x0 = F*np.ones(J)
+    x0[19] *= 1.001
+    x_true = np.zeros((N, len(x0)))
+    x = x0
+    x_true[0] = x[:]
 
-for n in range(1, N):
-    t = n*dt
-    x = rk4(lorenz, t, x, dt)
-    x_true[n] = x[:]
+    for n in range(1, N):
+        t = n*dt
+        x = rk4(lorenz, t, x, dt)
+        x_true[n] = x[:]
 
-x_true = x_true[360*20:][::5]  # 1年分を捨て，6h毎に取り出す
+    x_true = x_true[360*20:][::5]  # 1年分を捨て，6h毎に取り出す
 
 # da settings
 # 観測値: 観測誤差共分散, 後で定数倍の変化をさせる.

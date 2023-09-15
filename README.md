@@ -7,5 +7,11 @@
 pip install git+https://github.com/KotaTakeda/da_py.git
 ```
 
+### Commonly use
+- jupyter-notebook
+- matplotlib
+- pandas
+- tqdm
+
 ## examples
 - qmc_convergence: otが必要
