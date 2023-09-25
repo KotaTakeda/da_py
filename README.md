@@ -14,6 +14,4 @@ pip install git+https://github.com/KotaTakeda/da_py.git
 - plotly
 - pandas
 - tqdm
-
-## examples
-- qmc_convergence: otが必要
+- pot
