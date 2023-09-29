@@ -40,7 +40,7 @@ Implementation:
 """
 
 
-class LETKF:
+class LETKF():
     def __init__(
         self,
         M,
@@ -53,7 +53,6 @@ class LETKF:
         seed=1,
         c=3.0,
         localization="gaspari-cohn",
-        addaptive=False,
         multi_process=False,
     ):
         self.M = M
@@ -67,7 +66,6 @@ class LETKF:
         self.I = eye(m)
 
         self.alpha = alpha  # inflation用の定数
-        self.addaptive = addaptive
         self.c = c
         self.localization = localization
         self.multi_process = multi_process
@@ -105,9 +103,6 @@ class LETKF:
         dX_f = X_f - x_f  # (m, N)
         dY = (H @ dX_f.T).T  # (m, dim_y)
         dy = y_obs - H @ x_f
-        # if self.addaptive: # 不完全
-        #     alpha = (trace((y_obs - dY).T@(y_obs - dY) - (m-1)*R)/trace(dY.T@dY))**2
-        #     print(alpha)
 
         # 各成分でループ
         if self.multi_process:

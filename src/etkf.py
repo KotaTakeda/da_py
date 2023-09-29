@@ -35,7 +35,7 @@ class ETKF:
         m=10,
         alpha=1.0,
         seed=1,
-        addaptive=False,
+        store_ensemble=False,
     ):
         self.M = M
         self.H = H
@@ -48,16 +48,20 @@ class ETKF:
         self.I = eye(m)
 
         self.alpha = alpha  # inflation用の定数
-        self.addaptive = addaptive
 
         # filtering実行用
         self.x = []  # 記録用
         self.x_f = []
-        self.trP = []
+        self.store_ensemble = store_ensemble
+        if store_ensemble:
+            self.X_f = []
+            self.X_a = []
+        else:
+            self.trP = []
 
         self._initialize(x_0, P_0, m, seed)
 
-    # 　初期状態
+    # 初期値のサンプリング
     def _initialize(self, x_0, P_0, m, seed):
         random.seed(seed)
         self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, J)
@@ -73,6 +77,8 @@ class ETKF:
         self.t += dt
         self.x_mean = self.X.mean(axis=0)
         self.x_f.append(self.x_mean)
+        if self.store_ensemble:
+            self.X_f.append(self.X.copy())
 
     # 更新/解析
     def update(self, y_obs):
@@ -80,16 +86,21 @@ class ETKF:
         X_f = self.X
         H = self.H
 
+        # transformの準備
         dX_f = X_f - x_f  # (m, N)
         dY = (H @ dX_f.T).T  # (m, dim_y)
         dy = y_obs - H @ x_f  # (dim_y, )
         
+        # transform
         self.X = x_f + self._transform(dy, dY, dX_f)
 
         # 記録: 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
-        self.trP.append(sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1)))
-
+        if self.store_ensemble:
+            self.X_a.append(self.X.copy())
+        else:
+            self.trP.append(sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1)))
+        
     # 本体
     def _transform(self, dy, dY, dX_f):
         P_at = inv(
@@ -99,5 +110,3 @@ class ETKF:
             P_at @ dY @ dy + sqrtm((self.m - 1) * P_at)
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
         return (dX_f.T @ T).T  # (m, dim_x)
-
-    
