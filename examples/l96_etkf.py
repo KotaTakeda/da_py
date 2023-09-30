@@ -67,7 +67,7 @@ x_0 = x_true[np.random.randint(len(x_true)-1)]
 P_0 = 25*I
 
 # RUN DA
-etkf = ETKF(M, H, R, x_0, P_0, m=20, alpha=1.1, seed=seed, addaptive=False)
+etkf = ETKF(M, H, R, x_0, P_0, m=20, alpha=1.1, seed=seed)
 for y_obs in y:
     etkf.forecast(Dt)
     etkf.update(y_obs)

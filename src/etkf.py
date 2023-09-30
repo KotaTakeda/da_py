@@ -88,7 +88,7 @@ class ETKF:
 
         # transformの準備
         dX_f = X_f - x_f  # (m, N)
-        dY = (H @ dX_f.T).T  # (m, dim_y)
+        dY = (H @ dX_f.T).T  # (m, dim_y): 本来はH(X_f) - H(X_f).mean(axis=0)
         dy = y_obs - H @ x_f  # (dim_y, )
         
         # transform
