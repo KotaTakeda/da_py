@@ -57,7 +57,7 @@ else:
 # 観測値: 観測誤差共分散, 後で定数倍の変化をさせる.
 r = 1.0
 R = r*I
-noise = np.random.normal(loc=0, scale=r, size=x_true.shape)
+noise = np.random.normal(loc=0, scale=np.sqrt(r), size=x_true.shape)
 y = x_true + noise
 
 # 初期値
