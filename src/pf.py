@@ -1,8 +1,6 @@
 import numpy as np
-from numpy import random, sqrt, trace
+from numpy import random
 from numpy.linalg import inv
-from scipy.stats import multivariate_normal
-
 # NOTE: not tested
 
 

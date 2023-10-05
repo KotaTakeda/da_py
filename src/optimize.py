@@ -32,7 +32,7 @@ def grid_search2(
     evaluate, param1_name, params1, param2_name, params2, n_multi=1, multi_type="thread"
 ):
     params_kv = prod_params_kv(param1_name, params1, param2_name, params2)
-    if n_multi > 0:
+    if n_multi > 1:
         if multi_type == "process":
             errors = exec_mp(evaluate, params_kv, n_multi)
         else:
