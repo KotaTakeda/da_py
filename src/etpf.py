@@ -1,9 +1,10 @@
 import numpy as np
 from numpy import random
 from numpy.linalg import inv
+import ot
 
 
-class ParticleFilter(object):
+class EnsembleTransformParticleFilter(object):
     def __init__(self, M, H, R, x_0, P_0, m, add_inflation=0.0, seed=1, N_thr=1.0):
         self.M = M
         self.H = H
@@ -16,8 +17,6 @@ class ParticleFilter(object):
 
         # 記録用
         self.x = []
-        self.trP = []
-        self.resample_log = []
 
         # initialize ensemble
         self._initialize(x_0, P_0, m, seed)
@@ -28,12 +27,8 @@ class ParticleFilter(object):
         self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, dim_x)
         self.x_mean = self.X.mean(axis=0)
 
-    # def resampling_rate(self):
-    #     return np.mean(self.resample_log)
 
     def forecast(self, dt):
-        self._compute_trP()
-        # 各particleで予測
         for i, x in enumerate(self.X):
             self.X[i] = self.M(x, dt) 
             if self.h > 0:
@@ -41,20 +36,19 @@ class ParticleFilter(object):
 
     def update(self, y_obs):
         self._calculate_weights(y_obs)
-
-        if self._caluculate_eff(self.W) < self.N_thr:  # NOTE: 100%resampleする
-            # reindex = self._resample(W)
-            reindex = self._resample_by_choice(self.W)
-            self.X = self.X[reindex]
-            self._calculate_weights(y_obs)
+        self._resample_by_ot()
+        self._calculate_weights(y_obs)
 
         self.x.append(self.W@self.X)
 
-    def _resample_by_choice(self, W):
-        reindex = np.random.choice(
-            self.m, size=self.m, replace=True, p=W,
-        )  # Weightに従ってサンプル．
-        return reindex
+    def _resample_by_ot(self):
+        a = self.W  # source
+        b = np.ones(self.m)/self.m  # target
+        dMat = self.X@self.X.T
+        T = ot.emd(a, b, dMat)
+        S = self.m*T  # (M, M) = (source, target)
+        assert np.allclose(S.sum(axis=0), 1.0)
+        self.X = S.T@self.X  # (M, 2)
 
     def _negative_log_likelihood(self, x, y_obs):
         H = self.H
@@ -74,27 +68,6 @@ class ParticleFilter(object):
     def _caluculate_eff(self, W):
         return 1 / (W @ W) / len(W)
 
-    def _compute_trP(self):
-        dX = self.X - self.X.mean(axis=0)
-        self.trP.append(np.sqrt(np.trace(dX.T @ dX) / (self.m - 1)))
-
-    # def _resample(self, W):  # この実装は精度が悪い．
-    #     m = self.m
-    #     reindex = []
-    #     u = np.random.rand() / m
-    #     for _ in range(m):
-    #         reindex.append(self._F_inv(u, W))
-    #         u += 1 / m
-    #     return reindex
-
-    # # 重み累積分布関数の逆関数
-    # def _F_inv(self, u, W):
-    #     """
-    #     W: np ndarray (m, )
-    #     u: float
-    #     """
-    #     F = W.cumsum()
-    #     if u < F[0]:
-    #         return 0
-    #     else:
-    #         return F[F < u].argmax() + 1
+    # def _compute_trP(self):
+    #     dX = self.X - self.X.mean(axis=0)
+    #     self.trP.append(np.sqrt(np.trace(dX.T @ dX) / (self.m - 1)))

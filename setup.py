@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='da_py',
-    version='0.2.2a',
+    version='0.2.3',
     author='Kota Takeda',
     description='',
     long_description='',
