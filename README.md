@@ -1,6 +1,11 @@
 # data assimilation py
-データ同化でよく使うpythonモジュール．自分の開発用．
+データ同化用のpython code．
 開発中のコードも多い．
+
+```
+Author: Kota Takeda
+License: MIT
+```
 
 ## install
 ```
@@ -80,6 +85,6 @@ pip install git+https://github.com/KotaTakeda/da_py.git
     - alpha = 1.0 ~ 1.1
   - LETKF
     - m = 8 ~ 20 by 4
-    - alpha = 1.0 ~ 1.1
+    - alpha = 1.0 ~ 1.1 by 0.02
     - rho = 5 ~ 10 by 1
 ``````
