@@ -1,3 +1,4 @@
+from functools import cache
 import numpy as np
 from numpy import eye, random, sqrt, trace
 from numpy.linalg import inv
@@ -40,6 +41,7 @@ class ETKF:
         self.M = M
         self.H = H
         self.R = R
+        self.invR = inv(self.R)
         self.m = m  # アンサンブルメンバー数
         self.t = 0.0
 
@@ -104,9 +106,9 @@ class ETKF:
     # 本体
     def _transform(self, dy, dY, dX_f):
         P_at = inv(
-            ((self.m - 1) / self.alpha) * self.I + dY @ dY.T
+            ((self.m - 1) / self.alpha) * self.I + dY @ self.invR @ dY.T
         )  # アンサンブル空間でのP_a．(m, m)
         T = (
-            P_at @ dY @ dy + sqrtm((self.m - 1) * P_at)
+            P_at @ dY @ self.invR @ dy + sqrtm((self.m - 1) * P_at)
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
         return (dX_f.T @ T).T  # (m, dim_x)
