@@ -2,6 +2,7 @@ import numpy as np
 
 
 # Henon
+# Hénon, Michel (1976). “A two-dimensional mapping with a strange attractor”. Communications in Mathematical Physics (Springer) 50 (1): 69-77.
 # a, b を指定した関数henon(x)を返す
 def gen_henon(a=1.4, b=0.3):
     return lambda x: henon(x, a, b)
