@@ -8,7 +8,7 @@ from scipy.linalg import sqrtm
 # LocalEnsembleTransformKalmanFilter(LETKF)
 # ==========================================
 """
-Parameters
+Arguments
 M: callable(x, dt)
   状態遷移関数
 H: ndarray(dim_y, dim_x)

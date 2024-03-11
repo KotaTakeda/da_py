@@ -2,12 +2,12 @@ import numpy as np
 
 # Lorenz96
 # F, J を指定した関数lorenz(t,x)を返す
-def gen_l96(F):
-    """
-    Args:
-        - F, float: external force
-    """
-    return lambda t, x: lorenz96_np(t, x, F)
+# def gen_l96(F):
+#     """
+#     Args:
+#         - F, float: external force
+#     """
+#     return lambda t, x: lorenz96_np(t, x, F)
 
 
 def lorenz96(t, x, F):
