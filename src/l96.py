@@ -10,13 +10,18 @@ import numpy as np
 #     return lambda t, x: lorenz96_np(t, x, F)
 
 
+# def lorenz96(t, x, F):
+#     """
+#     """
+#     dx = np.zeros(len(x))
+#     for j in range(len(x)):
+#         dx[j] = (x[(j + 1) % 40] - x[(j - 2) % 40]) * x[(j - 1) % 40] - x[j]
+#     dx += F
+#     return dx
+
+
 def lorenz96(t, x, F):
-    dx = np.zeros(len(x))
-    for j in range(len(x)):
-        dx[j] = (x[(j + 1) % 40] - x[(j - 2) % 40]) * x[(j - 1) % 40] - x[j]
-    dx += F
-    return dx
-
-
-def lorenz96_np(t, x, F):
+    """
+    F (dim_x, ): external force
+    """
     return (np.roll(x, -1) - np.roll(x, 2)) * np.roll(x, 1) - x + F
