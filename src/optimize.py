@@ -41,6 +41,8 @@ def grid_search2(
         errors = list(map(evaluate, params_kv))
     errors = np.array(errors).reshape(len(params1), len(params2))
     df = pd.DataFrame(errors, index=params1, columns=params2)
+    df.index.name = param1_name
+    df.columns.name = param2_name
     return df
 
 
