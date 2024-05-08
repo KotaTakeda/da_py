@@ -31,23 +31,20 @@ class ETKF:
         M,
         H,
         R,
-        x_0,
-        P_0,
-        m=10,
         alpha=1.0,
-        seed=1,
         store_ensemble=False,
     ):
+        """
+        Args:
+        - M: (x, dt) -> x: model dynamics
+        - H: x -> y: observation operator
+        - R: x -> y: covariance of observation noise
+        """
         self.M = M
-        self.H = H
+        self.H = H  # NOTE: 線形を仮定
         self.R = R
         self.invR = inv(self.R)
-        self.m = m  # アンサンブルメンバー数
-        self.t = 0.0
 
-        # 実装で技術的に必要
-        self.dim_x = x_0.shape[0]
-        self.I = eye(m)
 
         self.alpha = alpha  # inflation用の定数
 
@@ -61,12 +58,15 @@ class ETKF:
         else:
             self.trP = []
 
-        self._initialize(x_0, P_0, m, seed)
-
     # 初期値のサンプリング
-    def _initialize(self, x_0, P_0, m, seed):
-        random.seed(seed)
-        self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, J)
+    def initialize(self, X_0):
+        m, dim_x = X_0.shape # inital ensemble
+        
+        self.dim_x = dim_x
+        self.m = m
+        self.t = 0.0
+
+        self.X = X_0
         self.x_mean = self.X.mean(axis=0)
 
     # 予報/時間発展
@@ -92,7 +92,7 @@ class ETKF:
         dX_f = X_f - x_f  # (m, N)
         dY = (H @ dX_f.T).T  # (m, dim_y): 本来はH(X_f) - H(X_f).mean(axis=0)
         dy = y_obs - H @ x_f  # (dim_y, )
-        
+
         # transform
         self.X = x_f + self._transform(dy, dY, dX_f)
 
@@ -102,7 +102,7 @@ class ETKF:
             self.X_a.append(self.X.copy())
         else:
             self.trP.append(sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1)))
-        
+
     # 本体
     def _transform(self, dy, dY, dX_f):
         P_at = inv(
