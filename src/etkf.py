@@ -69,6 +69,8 @@ class ETKF:
         self.X = X_0
         self.x_mean = self.X.mean(axis=0)
 
+        self.I = np.eye(m) # TODO: メモリ効率改善
+
     # 予報/時間発展
     def forecast(self, dt):
         """dt: 予測時間"""
