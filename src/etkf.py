@@ -5,7 +5,7 @@ from numpy.linalg import inv
 from scipy.linalg import sqrtm
 
 # ==========================================
-# LocalEnsembleTransformKalmanFilter(LETKF)
+# EnsembleTransformKalmanFilter(ETKF)
 # ==========================================
 """
 Arguments
@@ -45,48 +45,44 @@ class ETKF:
         self.R = R
         self.invR = inv(self.R)
 
-
         self.alpha = alpha  # inflation用の定数
 
-        # filtering実行用
+        self.store_ensemble = store_ensemble
+
+    # 初期値のサンプリング
+    def initialize(self, X_0):
+        m, dim_x = X_0.shape # ensemble shape
+        self.dim_x = dim_x
+        self.m = m
+        self.t = 0.0
+        self.X = X_0
+        self.I = np.eye(m) # TODO: メモリ効率改善
+
+        # 初期化
         self.x = []  # 記録用
         self.x_f = []
-        self.store_ensemble = store_ensemble
-        if store_ensemble:
+        if self.store_ensemble:
             self.X_f = []
             self.X_a = []
         else:
             self.trP = []
 
-    # 初期値のサンプリング
-    def initialize(self, X_0):
-        m, dim_x = X_0.shape # inital ensemble
-        
-        self.dim_x = dim_x
-        self.m = m
-        self.t = 0.0
-
-        self.X = X_0
-        self.x_mean = self.X.mean(axis=0)
-
-        self.I = np.eye(m) # TODO: メモリ効率改善
 
     # 予報/時間発展
     def forecast(self, dt):
         """dt: 予測時間"""
-        # アンサンブルで x(k) 予測
+        # アンサンブルで予測
         for i, s in enumerate(self.X):
             self.X[i] = self.M(s, dt)
 
         self.t += dt
-        self.x_mean = self.X.mean(axis=0)
-        self.x_f.append(self.x_mean)
+        self.x_f.append(self.X.mean(axis=0))
         if self.store_ensemble:
             self.X_f.append(self.X.copy())
 
     # 更新/解析
     def update(self, y_obs):
-        x_f = self.x_mean
+        x_f = self.x_f[-1]
         X_f = self.X
         H = self.H
 
@@ -98,7 +94,7 @@ class ETKF:
         # transform
         self.X = x_f + self._transform(dy, dY, dX_f)
 
-        # 記録: 更新した値のアンサンブル平均xを保存,
+        # 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
         if self.store_ensemble:
             self.X_a.append(self.X.copy())
