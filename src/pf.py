@@ -50,7 +50,7 @@ class ParticleFilter(object):
 
         self.x.append(self.W@self.X)
         self.Xa.append(self.X)
-        
+
     def _resample(self):
         reindex = np.random.choice(
             self.m, size=self.m, replace=True, p=self.W,
@@ -66,9 +66,9 @@ class ParticleFilter(object):
         return 0.5*(y_obs - h(x)) @ inv(R) @ (y_obs - h(x)) + 0.5*np.log(np.linalg.det(R)) + 0.5*dim_obs*np.log(2*np.pi)
     
     def _calculate_weights(self, y_obs):
-        nega_log_w = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
-        W = np.exp(-nega_log_w)
-        W += 1e-300
+        W = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
+        W -= np.min(W)
+        W = np.exp(-W)
         # W[W < 1e-6] = 1e-6
         W /= W.sum()
         self.W = W
