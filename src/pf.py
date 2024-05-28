@@ -44,17 +44,17 @@ class ParticleFilter(object):
         self._calculate_weights(y_obs)
 
         if self._caluculate_eff(self.W) < self.N_thr:
-            reindex = self._resample(self.W)
-            self.X = self.X[reindex]
+            self._resample()
             self._calculate_weights(y_obs)
 
         self.x.append(self.W@self.X)
 
-    def _resample(self, W):
+    def _resample(self):
         reindex = np.random.choice(
-            self.m, size=self.m, replace=True, p=W,
+            self.m, size=self.m, replace=True, p=self.W,
         )  # Weightに従ってサンプル．
-        return reindex
+        self.X = self.X[reindex]
+
 
     def _negative_log_likelihood(self, x, y_obs):
         h = self.h
