@@ -4,28 +4,30 @@ from numpy.linalg import inv
 
 
 class ParticleFilter(object):
-    def __init__(self, M, H, R, x_0, P_0, m, add_inflation=0.0, seed=1, N_thr=1.0):
+    def __init__(self, M, H, R, add_inflation=0.0, N_thr=1.0):
         self.M = M
         self.H = H
         self.R = R
         self.h = add_inflation
         self.N_thr = N_thr
-        self.m = m
-        self.idx = np.arange(self.m)
         self.t = 0.0
 
         # 記録用
         self.x = []
         self.resample_log = []
 
-        # initialize ensemble
-        self._initialize(x_0, P_0, m, seed)
 
-    # 　初期状態
-    def _initialize(self, x_0, P_0, m, seed):
-        random.seed(seed)
-        self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, dim_x)
-        self.x_mean = self.X.mean(axis=0)
+    # 初期アンサンブル
+    def initialize(self, X_0):
+        m, dim_x = X_0.shape # ensemble shape
+        self.dim_x = dim_x
+        self.m = m
+        self.idx = np.arange(self.m)
+        self.t = 0.0
+        self.X = X_0
+
+        # 初期化
+        self.x = []  # 記録用
 
     # def resampling_rate(self):
     #     return np.mean(self.resample_log)
