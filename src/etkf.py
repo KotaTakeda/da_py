@@ -49,7 +49,7 @@ class ETKF:
 
         self.store_ensemble = store_ensemble
 
-    # 初期値のサンプリング
+    # 初期アンサンブル
     def initialize(self, X_0):
         m, dim_x = X_0.shape # ensemble shape
         self.dim_x = dim_x
@@ -64,8 +64,6 @@ class ETKF:
         if self.store_ensemble:
             self.X_f = []
             self.X_a = []
-        else:
-            self.trP = []
 
 
     # 予報/時間発展
@@ -98,8 +96,6 @@ class ETKF:
         self.x.append(self.X.mean(axis=0))
         if self.store_ensemble:
             self.X_a.append(self.X.copy())
-        else:
-            self.trP.append(sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1)))
 
     # 本体
     def _transform(self, dy, dY, dX_f):

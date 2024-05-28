@@ -46,11 +46,8 @@ class LETKF():
         M,
         H,
         R,
-        x_0,
-        P_0,
-        m=10,
         alpha=1.0,
-        seed=1,
+        store_ensemble=False,
         c=3.0,
         localization="gaspari-cohn",
         multi_process=False,
@@ -58,30 +55,30 @@ class LETKF():
         self.M = M
         self.H = H
         self.R = R
-        self.m = m  # アンサンブルメンバー数
         self.t = 0.0
-
-        # 実装で技術的に必要
-        self.dim_x = x_0.shape[0]
-        self.I = eye(m)
 
         self.alpha = alpha  # inflation用の定数
         self.c = c
         self.localization = localization
         self.multi_process = multi_process
 
-        # filtering実行用
+        self.store_ensemble = store_ensemble
+
+    # 初期アンサンブル
+    def initialize(self, X_0):
+        m, dim_x = X_0.shape # ensemble shape
+        self.dim_x = dim_x
+        self.m = m
+        self.t = 0.0
+        self.X = X_0
+        self.I = np.eye(m) # TODO: メモリ効率改善
+
+        # 初期化
         self.x = []  # 記録用
         self.x_f = []
-        self.trP = []
-
-        self._initialize(x_0, P_0, m, seed)
-
-    # 　初期状態
-    def _initialize(self, x_0, P_0, m, seed):
-        random.seed(seed)
-        self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, J)
-        self.x_mean = self.X.mean(axis=0)
+        if self.store_ensemble:
+            self.X_f = []
+            self.X_a = []
 
     # 予報/時間発展
     def forecast(self, dt):
@@ -119,9 +116,9 @@ class LETKF():
 
         # 記録: 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
-        self.trP.append(
-            sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1))
-        )  # 推定誤差共分散P_fのtraceを保存
+        # self.trP.append(
+            # sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1))
+        # )  # 推定誤差共分散P_fのtraceを保存
 
     # 本体
     def _transform_each(self, i, dy, dY, dX_f):
