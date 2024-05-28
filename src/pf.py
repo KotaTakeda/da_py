@@ -16,7 +16,6 @@ class ParticleFilter(object):
 
         # 記録用
         self.x = []
-        self.trP = []
         self.resample_log = []
 
         # initialize ensemble
@@ -32,7 +31,6 @@ class ParticleFilter(object):
     #     return np.mean(self.resample_log)
 
     def forecast(self, dt):
-        self._compute_trP()
         # 各particleで予測
         for i, x in enumerate(self.X):
             self.X[i] = self.M(x, dt) 
@@ -73,10 +71,6 @@ class ParticleFilter(object):
 
     def _caluculate_eff(self, W):
         return 1 / (W @ W) / len(W)
-
-    def _compute_trP(self):
-        dX = self.X - self.X.mean(axis=0)
-        self.trP.append(np.sqrt(np.trace(dX.T @ dX) / (self.m - 1)))
 
     # def _resample(self, W):  # この実装は精度が悪い．
     #     m = self.m
