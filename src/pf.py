@@ -28,6 +28,7 @@ class ParticleFilter(object):
 
         # 初期化
         self.x = []  # 記録用
+        self.Xa = []
 
     # def resampling_rate(self):
     #     return np.mean(self.resample_log)
@@ -48,7 +49,8 @@ class ParticleFilter(object):
             self._calculate_weights(y_obs)
 
         self.x.append(self.W@self.X)
-
+        self.Xa.append(self.X)
+        
     def _resample(self):
         reindex = np.random.choice(
             self.m, size=self.m, replace=True, p=self.W,
