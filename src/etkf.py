@@ -13,12 +13,8 @@ M: callable(x, dt)
   状態遷移関数
 H: ndarray(dim_y, dim_x)
   観測行列  
-Q: ndarray(dim_x, dim_x)
-  モデルの誤差共分散行列 
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
-x_0: 状態変数の初期値
-P_0: 誤差共分散の初期値
 m: アンサンブルメンバーの数
 alpha: inflation factor
 x: ndarray(dim_x)
