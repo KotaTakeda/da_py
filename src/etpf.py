@@ -5,28 +5,24 @@ import ot
 
 
 class EnsembleTransformParticleFilter(object):
-    def __init__(self, M, H, R, x_0, P_0, m, add_inflation=0.0, seed=1, N_thr=1.0):
+    def __init__(self, M, H, R, add_inflation=0.0, N_thr=1.0):
         self.M = M
         self.H = H
         self.R = R
         self.h = add_inflation
         self.N_thr = N_thr
-        self.m = m
-        self.idx = np.arange(self.m)
         self.t = 0.0
 
-        # 記録用
-        self.x = []
+    # 初期アンサンブル
+    def initialize(self, X_0):
+        m, dim_x = X_0.shape # ensemble shape
+        self.dim_x = dim_x
+        self.m = m
+        self.t = 0.0
+        self.X = X_0
 
-        # initialize ensemble
-        self._initialize(x_0, P_0, m, seed)
-
-    # 　初期状態
-    def _initialize(self, x_0, P_0, m, seed):
-        random.seed(seed)
-        self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, dim_x)
-        self.x_mean = self.X.mean(axis=0)
-
+        # 初期化
+        self.x = []  # 記録用
 
     def forecast(self, dt):
         for i, x in enumerate(self.X):
@@ -67,7 +63,3 @@ class EnsembleTransformParticleFilter(object):
 
     def _caluculate_eff(self, W):
         return 1 / (W @ W) / len(W)
-
-    # def _compute_trP(self):
-    #     dX = self.X - self.X.mean(axis=0)
-    #     self.trP.append(np.sqrt(np.trace(dX.T @ dX) / (self.m - 1)))
