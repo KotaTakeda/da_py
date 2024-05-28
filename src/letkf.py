@@ -15,14 +15,14 @@ from scipy.linalg import sqrtm
 Parameters
 M: callable(x, dt)
   状態遷移関数
-H: ndarray(dim_y, dim_x)
+H: ndarray(dim_y, Nx)
   観測行列  
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
 m: アンサンブルメンバーの数
 alpha: inflation factor
 localization: localizationの設定
-x: ndarray(dim_x)
+x: ndarray(Nx)
 
 Implementation:
     iteration:
@@ -62,8 +62,8 @@ class LETKF():
 
     # 初期アンサンブル
     def initialize(self, X_0):
-        m, dim_x = X_0.shape # ensemble shape
-        self.dim_x = dim_x
+        m, Nx = X_0.shape # ensemble shape
+        self.Nx = Nx
         self.m = m
         self.t = 0.0
         self.X = X_0
@@ -103,17 +103,17 @@ class LETKF():
             n_process = 4
             with get_context("fork").Pool(n_process) as pl:
                 process = partial(self._transform_each, dy=dy, dY=dY, dX_f=dX_f)
-                self.X = np.array(pl.map(process, list(range(self.dim_x)))).T
+                self.X = np.array(pl.map(process, list(range(self.Nx)))).T
                 pl.close()
                 pl.join()
         else:
-            for i in range(self.dim_x):
+            for i in range(self.Nx):
                 self.X[:, i] = self.x_mean[i] + self._transform_each(i, dy, dY, dX_f)
 
         # 記録: 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
         # self.trP.append(
-            # sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1))
+            # sqrt(trace(dX_f.T @ dX_f) / (self.Nx - 1))
         # )  # 推定誤差共分散P_fのtraceを保存
 
     # 本体
@@ -125,15 +125,15 @@ class LETKF():
         T = (
             P_at @ C @ dy + sqrtm((self.m - 1) * P_at)
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-        return (dX_f.T @ T).T[:, i]  # (m, dim_x)
+        return (dX_f.T @ T).T[:, i]  # (m, Nx)
 
     # localization用の関数
     @cache
     def _rho(self, i):
         return np.array(
             [
-                gaspari_cohn(calc_dist(i, j, J=self.dim_x), self.c)
-                for j in range(self.dim_x)
+                gaspari_cohn(calc_dist(i, j, J=self.Nx), self.c)
+                for j in range(self.Nx)
             ]
         )
 

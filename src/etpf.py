@@ -15,8 +15,8 @@ class EnsembleTransformParticleFilter(object):
 
     # 初期アンサンブル
     def initialize(self, X_0):
-        m, dim_x = X_0.shape # ensemble shape
-        self.dim_x = dim_x
+        m, Nx = X_0.shape # ensemble shape
+        self.Nx = Nx
         self.m = m
         self.t = 0.0
         self.X = X_0

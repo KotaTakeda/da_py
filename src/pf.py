@@ -8,7 +8,7 @@ class ParticleFilter(object):
         self.M = M
         self.H = H
         self.R = R
-        self.h = add_inflation
+        self.sigma_add = add_inflation
         self.N_thr = N_thr
         self.t = 0.0
 
@@ -19,8 +19,8 @@ class ParticleFilter(object):
 
     # 初期アンサンブル
     def initialize(self, X_0):
-        m, dim_x = X_0.shape # ensemble shape
-        self.dim_x = dim_x
+        m, Nx = X_0.shape # ensemble shape
+        self.Nx = Nx
         self.m = m
         self.idx = np.arange(self.m)
         self.t = 0.0
@@ -34,10 +34,11 @@ class ParticleFilter(object):
 
     def forecast(self, dt):
         # 各particleで予測
-        for i, x in enumerate(self.X):
-            self.X[i] = self.M(x, dt) 
-            if self.h > 0:
-                self.X[i] += np.random.normal(loc=0, scale=self.h)
+        for k, x in enumerate(self.X):
+            self.X[k] = self.M(x, dt)
+
+        if self.sigma_add > 0:
+            self.X += np.random.normal(loc=0, scale=self.sigma_add, size=(self.m, self.Nx)) # x^(k) + xi(k), xi(k) ~ N(0, sigma_add * I_{Nx})
 
     def update(self, y_obs):
         self._calculate_weights(y_obs)
