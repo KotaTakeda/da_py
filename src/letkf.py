@@ -15,18 +15,14 @@ from scipy.linalg import sqrtm
 Parameters
 M: callable(x, dt)
   状態遷移関数
-H: ndarray(dim_y, dim_x)
+H: ndarray(dim_y, Nx)
   観測行列  
-Q: ndarray(dim_x, dim_x)
-  モデルの誤差共分散行列 
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
-x_0: 状態変数の初期値
-P_0: 誤差共分散の初期値
 m: アンサンブルメンバーの数
 alpha: inflation factor
 localization: localizationの設定
-x: ndarray(dim_x)
+x: ndarray(Nx)
 
 Implementation:
     iteration:
@@ -46,11 +42,8 @@ class LETKF():
         M,
         H,
         R,
-        x_0,
-        P_0,
-        m=10,
         alpha=1.0,
-        seed=1,
+        store_ensemble=False,
         c=3.0,
         localization="gaspari-cohn",
         multi_process=False,
@@ -58,30 +51,30 @@ class LETKF():
         self.M = M
         self.H = H
         self.R = R
-        self.m = m  # アンサンブルメンバー数
         self.t = 0.0
-
-        # 実装で技術的に必要
-        self.dim_x = x_0.shape[0]
-        self.I = eye(m)
 
         self.alpha = alpha  # inflation用の定数
         self.c = c
         self.localization = localization
         self.multi_process = multi_process
 
-        # filtering実行用
+        self.store_ensemble = store_ensemble
+
+    # 初期アンサンブル
+    def initialize(self, X_0):
+        m, Nx = X_0.shape # ensemble shape
+        self.Nx = Nx
+        self.m = m
+        self.t = 0.0
+        self.X = X_0
+        self.I = np.eye(m) # TODO: メモリ効率改善
+
+        # 初期化
         self.x = []  # 記録用
         self.x_f = []
-        self.trP = []
-
-        self._initialize(x_0, P_0, m, seed)
-
-    # 　初期状態
-    def _initialize(self, x_0, P_0, m, seed):
-        random.seed(seed)
-        self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, J)
-        self.x_mean = self.X.mean(axis=0)
+        if self.store_ensemble:
+            self.X_f = []
+            self.X_a = []
 
     # 予報/時間発展
     def forecast(self, dt):
@@ -110,18 +103,18 @@ class LETKF():
             n_process = 4
             with get_context("fork").Pool(n_process) as pl:
                 process = partial(self._transform_each, dy=dy, dY=dY, dX_f=dX_f)
-                self.X = np.array(pl.map(process, list(range(self.dim_x)))).T
+                self.X = np.array(pl.map(process, list(range(self.Nx)))).T
                 pl.close()
                 pl.join()
         else:
-            for i in range(self.dim_x):
+            for i in range(self.Nx):
                 self.X[:, i] = self.x_mean[i] + self._transform_each(i, dy, dY, dX_f)
 
         # 記録: 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
-        self.trP.append(
-            sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1))
-        )  # 推定誤差共分散P_fのtraceを保存
+        # self.trP.append(
+            # sqrt(trace(dX_f.T @ dX_f) / (self.Nx - 1))
+        # )  # 推定誤差共分散P_fのtraceを保存
 
     # 本体
     def _transform_each(self, i, dy, dY, dX_f):
@@ -132,15 +125,15 @@ class LETKF():
         T = (
             P_at @ C @ dy + sqrtm((self.m - 1) * P_at)
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-        return (dX_f.T @ T).T[:, i]  # (m, dim_x)
+        return (dX_f.T @ T).T[:, i]  # (m, Nx)
 
     # localization用の関数
     @cache
     def _rho(self, i):
         return np.array(
             [
-                gaspari_cohn(calc_dist(i, j, J=self.dim_x), self.c)
-                for j in range(self.dim_x)
+                gaspari_cohn(calc_dist(i, j, J=self.Nx), self.c)
+                for j in range(self.Nx)
             ]
         )
 

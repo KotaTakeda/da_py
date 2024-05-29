@@ -11,17 +11,13 @@ from scipy.linalg import sqrtm
 Arguments
 M: callable(x, dt)
   状態遷移関数
-H: ndarray(dim_y, dim_x)
+H: ndarray(dim_y, Nx)
   観測行列  
-Q: ndarray(dim_x, dim_x)
-  モデルの誤差共分散行列 
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
-x_0: 状態変数の初期値
-P_0: 誤差共分散の初期値
 m: アンサンブルメンバーの数
 alpha: inflation factor
-x: ndarray(dim_x)
+x: ndarray(Nx)
 """
 
 
@@ -49,10 +45,10 @@ class ETKF:
 
         self.store_ensemble = store_ensemble
 
-    # 初期値のサンプリング
+    # 初期アンサンブル
     def initialize(self, X_0):
-        m, dim_x = X_0.shape # ensemble shape
-        self.dim_x = dim_x
+        m, Nx = X_0.shape # ensemble shape
+        self.Nx = Nx
         self.m = m
         self.t = 0.0
         self.X = X_0
@@ -64,8 +60,6 @@ class ETKF:
         if self.store_ensemble:
             self.X_f = []
             self.X_a = []
-        else:
-            self.trP = []
 
 
     # 予報/時間発展
@@ -98,8 +92,6 @@ class ETKF:
         self.x.append(self.X.mean(axis=0))
         if self.store_ensemble:
             self.X_a.append(self.X.copy())
-        else:
-            self.trP.append(sqrt(trace(dX_f.T @ dX_f) / (self.dim_x - 1)))
 
     # 本体
     def _transform(self, dy, dY, dX_f):
@@ -109,4 +101,4 @@ class ETKF:
         T = (
             P_at @ dY @ self.invR @ dy + sqrtm((self.m - 1) * P_at)
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-        return (dX_f.T @ T).T  # (m, dim_x)
+        return (dX_f.T @ T).T  # (m, Nx)

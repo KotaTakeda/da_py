@@ -4,79 +4,76 @@ from numpy.linalg import inv
 
 
 class ParticleFilter(object):
-    def __init__(self, M, H, R, x_0, P_0, m, add_inflation=0.0, seed=1, N_thr=1.0):
+    def __init__(self, M, h, R, add_inflation=0.0, N_thr=1.0):
         self.M = M
-        self.H = H
+        self.h = h
         self.R = R
-        self.h = add_inflation
+        self.sigma_add = add_inflation # <=> Q = sigma_add**2 * I_{Nx}の離散modelノイズ
         self.N_thr = N_thr
-        self.m = m
-        self.idx = np.arange(self.m)
         self.t = 0.0
 
         # 記録用
         self.x = []
-        self.trP = []
         self.resample_log = []
 
-        # initialize ensemble
-        self._initialize(x_0, P_0, m, seed)
 
-    # 　初期状態
-    def _initialize(self, x_0, P_0, m, seed):
-        random.seed(seed)
-        self.X = x_0 + random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, dim_x)
-        self.x_mean = self.X.mean(axis=0)
+    # 初期アンサンブル
+    def initialize(self, X_0):
+        m, Nx = X_0.shape # ensemble shape
+        self.Nx = Nx
+        self.m = m
+        self.idx = np.arange(self.m)
+        self.t = 0.0
+        self.X = X_0
+
+        # 初期化
+        self.x = []  # 記録用
+        self.Xa = []
 
     # def resampling_rate(self):
     #     return np.mean(self.resample_log)
 
     def forecast(self, dt):
-        self._compute_trP()
         # 各particleで予測
-        for i, x in enumerate(self.X):
-            self.X[i] = self.M(x, dt) 
-            if self.h > 0:
-                self.X[i] += np.random.normal(loc=0, scale=self.h)
+        for k, x in enumerate(self.X):
+            self.X[k] = self.M(x, dt)
+
+        if self.sigma_add > 0:
+            self.X += np.random.normal(loc=0, scale=self.sigma_add, size=(self.m, self.Nx)) # x^(k) + xi(k), xi(k) ~ N(0, sigma_add**2 * I_{Nx})
 
     def update(self, y_obs):
         self._calculate_weights(y_obs)
 
-        if self._caluculate_eff(self.W) < self.N_thr:  # NOTE: 100%resampleする
-            # reindex = self._resample(W)
-            reindex = self._resample_by_choice(self.W)
-            self.X = self.X[reindex]
+        if self._caluculate_eff(self.W) < self.N_thr:
+            self._resample()
             self._calculate_weights(y_obs)
 
         self.x.append(self.W@self.X)
+        self.Xa.append(self.X)
 
-    def _resample_by_choice(self, W):
+    def _resample(self):
         reindex = np.random.choice(
-            self.m, size=self.m, replace=True, p=W,
+            self.m, size=self.m, replace=True, p=self.W,
         )  # Weightに従ってサンプル．
-        return reindex
+        self.X = self.X[reindex]
+
 
     def _negative_log_likelihood(self, x, y_obs):
-        H = self.H
+        h = self.h
         R = self.R
         dim_obs = R.shape[0]
-        # return -np.log(multivariate_normal.pdf(H@x, mean=y_obs, cov=R))
-        return 0.5*(y_obs - H @ x) @ inv(R) @ (y_obs - H @ x) + 0.5*np.log(np.linalg.det(R)) + 0.5*dim_obs*np.log(2*np.pi)
+        # return -np.log(multivariate_normal.pdf(h(x), mean=y_obs, cov=R))
+        return 0.5*(y_obs - h(x)) @ inv(R) @ (y_obs - h(x)) + 0.5*np.log(np.linalg.det(R)) + 0.5*dim_obs*np.log(2*np.pi)
     
     def _calculate_weights(self, y_obs):
-        nega_log_w = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
-        W = np.exp(-nega_log_w)
-        W += 1e-300
-        # W[W < 1e-6] = 1e-6
+        W = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
+        W -= np.min(W)
+        W = np.exp(-W)
         W /= W.sum()
         self.W = W
 
     def _caluculate_eff(self, W):
         return 1 / (W @ W) / len(W)
-
-    def _compute_trP(self):
-        dX = self.X - self.X.mean(axis=0)
-        self.trP.append(np.sqrt(np.trace(dX.T @ dX) / (self.m - 1)))
 
     # def _resample(self, W):  # この実装は精度が悪い．
     #     m = self.m
