@@ -8,7 +8,7 @@ class ParticleFilter(object):
         self.M = M
         self.h = h
         self.R = R
-        self.sigma_add = add_inflation
+        self.sigma_add = add_inflation # <=> Q = sigma_add**2 * I_{Nx}の離散modelノイズ
         self.N_thr = N_thr
         self.t = 0.0
 
@@ -39,7 +39,7 @@ class ParticleFilter(object):
             self.X[k] = self.M(x, dt)
 
         if self.sigma_add > 0:
-            self.X += np.random.normal(loc=0, scale=self.sigma_add, size=(self.m, self.Nx)) # x^(k) + xi(k), xi(k) ~ N(0, sigma_add * I_{Nx})
+            self.X += np.random.normal(loc=0, scale=self.sigma_add, size=(self.m, self.Nx)) # x^(k) + xi(k), xi(k) ~ N(0, sigma_add**2 * I_{Nx})
 
     def update(self, y_obs):
         self._calculate_weights(y_obs)
@@ -69,7 +69,6 @@ class ParticleFilter(object):
         W = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
         W -= np.min(W)
         W = np.exp(-W)
-        # W[W < 1e-6] = 1e-6
         W /= W.sum()
         self.W = W
 
