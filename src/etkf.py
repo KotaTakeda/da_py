@@ -62,8 +62,8 @@ class ETKF:
         self.x = []  # 記録用
         self.x_f = []
         if self.store_ensemble:
-            self.X_f = []
-            self.X_a = []
+            self.Xf = []
+            self.Xa = []
 
     # 予報/時間発展
     def forecast(self, dt):
@@ -75,7 +75,7 @@ class ETKF:
         self.t += dt
         self.x_f.append(self.X.mean(axis=0))
         if self.store_ensemble:
-            self.X_f.append(self.X.copy())
+            self.Xf.append(self.X.copy())
 
     # 更新/解析
     def update(self, y_obs):
@@ -83,21 +83,21 @@ class ETKF:
 
         # TODO: 様子を見て以下を削除
         # x_f = self.x_f[-1]
-        # X_f = self.X
+        # Xf = self.X
         # H = self.H
 
         # # transformの準備
-        # dX_f = X_f - x_f  # (m, Nx)
-        # dY = (H @ dX_f.T).T  # (m, Ny): 本来はH(X_f) - H(X_f).mean(axis=0)
+        # dXf = Xf - x_f  # (m, Nx)
+        # dY = (H @ dXf.T).T  # (m, Ny): 本来はH(Xf) - H(Xf).mean(axis=0)
         # dy = y_obs - H @ x_f  # (Ny, )
 
         # # transform
-        # self.X = x_f + self._transform(dy, dY, dX_f)
+        # self.X = x_f + self._transform(dy, dY, dXf)
 
         # # 更新した値のアンサンブル平均xを保存,
         # self.x.append(self.X.mean(axis=0))
         # if self.store_ensemble:
-        #     self.X_a.append(self.X.copy())
+        #     self.Xa.append(self.X.copy())
 
     def _update_T(self, y_obs):
         Xf = self.X.T  # (Nx, m)
@@ -108,7 +108,7 @@ class ETKF:
         dXf = Xf - xf[:, None]  # (Nx, m)
         Yf = self._apply_H(Xf)
         dYf = Yf - Yf.mean(axis=1, keepdims=True)
-        # dY = H @ dXf  # (m, Ny): 本来はH(X_f) - H(X_f).mean(axis=1)
+        # dY = H @ dXf  # (m, Ny): 本来はH(Xf) - H(Xf).mean(axis=1)
         dy = y_obs - self._apply_H(xf)
         # dy = y_obs - H @ xf  # (Ny, )
 
@@ -120,17 +120,17 @@ class ETKF:
         # 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
         if self.store_ensemble:
-            self.X_a.append(self.X.copy())
+            self.Xa.append(self.X.copy())
 
     # 本体
-    # def _transform(self, dy, dY, dX_f):
+    # def _transform(self, dy, dY, dXf):
     #     P_at = inv(
     #         ((self.m - 1) / self.alpha) * self.I + dY @ self.invR @ dY.T
     #     )  # アンサンブル空間でのP_a．(m, m)
     #     T = (
     #         P_at @ dY @ self.invR @ dy + sqrtm((self.m - 1) * P_at)
     #     ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-    #     return (dX_f.T @ T).T  # (m, Nx)
+    #     return (dXf.T @ T).T  # (m, Nx)
 
     # 本体
     def _transform_T(self, dy, dY, dXf):
@@ -146,6 +146,6 @@ class ETKF:
     def _apply_H(self, X):
         """X: (Nx, m)"""
         if self.linear_obs:
-            return self.H@X # (Ny, m)
+            return self.H @ X  # (Ny, m)
         else:
-            return self.H(X.T).T # (Ny, m)
+            return self.H(X.T).T  # (Ny, m)

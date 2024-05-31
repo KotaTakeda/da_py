@@ -62,8 +62,8 @@ class PO:
         self.x = []  # 記録用
         self.x_f = []
         if self.store_ensemble:
-            self.X_f = []
-            self.X_a = []
+            self.Xf = []
+            self.Xa = []
 
     # 予報/時間発展
     def forecast(self, dt):
@@ -75,7 +75,7 @@ class PO:
         self.t += dt
         self.x_f.append(self.X.mean(axis=0))
         if self.store_ensemble:
-            self.X_f.append(self.X.copy())
+            self.Xf.append(self.X.copy())
 
     # 更新/解析
     def update(self, y_obs):
@@ -108,7 +108,7 @@ class PO:
         # 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
         if self.store_ensemble:
-            self.X_a.append(self.X.copy())
+            self.Xa.append(self.X.copy())
 
     # 非線形観測のハンドリングに必要
     def _apply_H(self, X):

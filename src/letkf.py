@@ -36,7 +36,7 @@ Implementation:
 """
 
 
-class LETKF():
+class LETKF:
     def __init__(
         self,
         M,
@@ -62,19 +62,19 @@ class LETKF():
 
     # 初期アンサンブル
     def initialize(self, X_0):
-        m, Nx = X_0.shape # ensemble shape
+        m, Nx = X_0.shape  # ensemble shape
         self.Nx = Nx
         self.m = m
         self.t = 0.0
         self.X = X_0
-        self.I = np.eye(m) # TODO: メモリ効率改善
+        self.I = np.eye(m)  # TODO: メモリ効率改善
 
         # 初期化
         self.x = []  # 記録用
         self.x_f = []
         if self.store_ensemble:
-            self.X_f = []
-            self.X_a = []
+            self.Xf = []
+            self.Xa = []
 
     # 予報/時間発展
     def forecast(self, dt):
@@ -90,11 +90,11 @@ class LETKF():
     # 更新/解析
     def update(self, y_obs):
         x_f = self.x_mean
-        X_f = self.X
+        Xf = self.X
         H = self.H
 
-        dX_f = X_f - x_f  # (m, N)
-        dY = (H @ dX_f.T).T  # (m, dim_y)
+        dXf = Xf - x_f  # (m, N)
+        dY = (H @ dXf.T).T  # (m, dim_y)
         dy = y_obs - H @ x_f
 
         # 各成分でループ
@@ -102,22 +102,22 @@ class LETKF():
             # multi.cpu_count()
             n_process = 4
             with get_context("fork").Pool(n_process) as pl:
-                process = partial(self._transform_each, dy=dy, dY=dY, dX_f=dX_f)
+                process = partial(self._transform_each, dy=dy, dY=dY, dXf=dXf)
                 self.X = np.array(pl.map(process, list(range(self.Nx)))).T
                 pl.close()
                 pl.join()
         else:
             for i in range(self.Nx):
-                self.X[:, i] = self.x_mean[i] + self._transform_each(i, dy, dY, dX_f)
+                self.X[:, i] = self.x_mean[i] + self._transform_each(i, dy, dY, dXf)
 
         # 記録: 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
         # self.trP.append(
-            # sqrt(trace(dX_f.T @ dX_f) / (self.Nx - 1))
+        # sqrt(trace(dXf.T @ dXf) / (self.Nx - 1))
         # )  # 推定誤差共分散P_fのtraceを保存
 
     # 本体
-    def _transform_each(self, i, dy, dY, dX_f):
+    def _transform_each(self, i, dy, dY, dXf):
         C = dY @ self._locR(i)  # localization: invRの各i行にrho_iをかける．(m, dim_y)
         P_at = inv(
             ((self.m - 1) / self.alpha) * self.I + C @ dY.T
@@ -125,16 +125,13 @@ class LETKF():
         T = (
             P_at @ C @ dy + sqrtm((self.m - 1) * P_at)
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-        return (dX_f.T @ T).T[:, i]  # (m, Nx)
+        return (dXf.T @ T).T[:, i]  # (m, Nx)
 
     # localization用の関数
     @cache
     def _rho(self, i):
         return np.array(
-            [
-                gaspari_cohn(calc_dist(i, j, J=self.Nx), self.c)
-                for j in range(self.Nx)
-            ]
+            [gaspari_cohn(calc_dist(i, j, J=self.Nx), self.c) for j in range(self.Nx)]
         )
 
     @cache
