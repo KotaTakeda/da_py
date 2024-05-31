@@ -37,7 +37,11 @@ class ETKF:
         - R: x -> y: covariance of observation noise
         """
         self.M = M
-        self.H = H  # NOTE: 線形を仮定
+        self.H = H
+        self.linear_obs = isinstance(H, np.ndarray)
+        if not self.linear_obs:
+            self.H = np.vectorize(H, signature="(Nx)->(Ny)")
+
         self.R = R
         self.invR = inv(self.R)
 
@@ -102,11 +106,14 @@ class ETKF:
 
         # transformの準備
         dXf = Xf - xf[:, None]  # (Nx, m)
-        dY = H @ dXf  # (m, Ny): 本来はH(X_f) - H(X_f).mean(axis=1)
-        dy = y_obs - H @ xf  # (Ny, )
+        Yf = self._apply_H(Xf)
+        dYf = Yf - Yf.mean(axis=1, keepdims=True)
+        # dY = H @ dXf  # (m, Ny): 本来はH(X_f) - H(X_f).mean(axis=1)
+        dy = y_obs - self._apply_H(xf)
+        # dy = y_obs - H @ xf  # (Ny, )
 
         # transform
-        Xa = xf[:, None] + self._transform_T(dy, dY, dXf)  # (Nx, m)
+        Xa = xf[:, None] + self._transform_T(dy, dYf, dXf)  # (Nx, m)
 
         self.X = Xa.T  # (m, Nx)
 
@@ -134,3 +141,11 @@ class ETKF:
             P_at @ dY.T @ self.invR @ dy + sqrtm((self.m - 1) * P_at)
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
         return dXf @ T  # (Nx, m)
+
+    # 非線形観測のハンドリングに必要
+    def _apply_H(self, X):
+        """X: (Nx, m)"""
+        if self.linear_obs:
+            return self.H@X # (Ny, m)
+        else:
+            return self.H(X.T).T # (Ny, m)

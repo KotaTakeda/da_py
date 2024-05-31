@@ -37,7 +37,11 @@ class PO:
         - R: x -> y: covariance of observation noise
         """
         self.M = M
-        self.H = H  # NOTE: 線形を仮定
+        self.H = H
+        self.linear_obs = isinstance(H, np.ndarray)
+        if not self.linear_obs:
+            self.H = np.vectorize(H, signature="(Nx)->(Ny)")
+
         self.R = R
         self.invR = inv(self.R)
 
@@ -47,12 +51,12 @@ class PO:
 
     # 初期アンサンブル
     def initialize(self, X_0):
-        m, Nx = X_0.shape # ensemble shape
+        m, Nx = X_0.shape  # ensemble shape
         self.Nx = Nx
         self.m = m
         self.t = 0.0
         self.X = X_0
-        self.I = np.eye(m) # TODO: メモリ効率改善
+        self.I = np.eye(m)  # TODO: メモリ効率改善
 
         # 初期化
         self.x = []  # 記録用
@@ -60,7 +64,6 @@ class PO:
         if self.store_ensemble:
             self.X_f = []
             self.X_a = []
-
 
     # 予報/時間発展
     def forecast(self, dt):
@@ -77,19 +80,28 @@ class PO:
     # 更新/解析
     def update(self, y_obs):
         # !NOTE: 転置している
-        Xf = self.X.T # (Nx, m)
+        Xf = self.X.T  # (Nx, m)
+        xf = Xf
         H = self.H
 
         # NOTE: この実装ではadditive inflationは使えない
-        dXf = Xf - Xf.mean(axis=1, keepdims=True)  # (Nx, m)
-        dXf *= self.alpha
-        dY = H@dXf  # (Ny, m): 本来はH(X) - H(X).mean(axis=1)
-        K = dXf@dY.T@np.linalg.inv(dY@dY.T + self.R) # (Nx, Ny)
+        dXf = Xf - xf[:, None]  # (Nx, m)
+        Yf = self._apply_H(Xf)
+        dYf = Yf - Yf.mean(axis=1, keepdims=True)  # (Ny, m)
 
-        eta_rep = np.random.multivariate_normal(np.zeros_like(y_obs), self.R, self.m).T # (m, Ny)
+        if self.alpha > 1:  # この意味のmultiplicative inflation
+            dXf *= self.alpha
+            dYf *= self.alpha
+            # Xf = xf[:, None] + dXf
+
+        K = dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + self.R)  # (Nx, Ny)
+
+        eta_rep = np.random.multivariate_normal(
+            np.zeros_like(y_obs), self.R, self.m
+        ).T  # (m, Ny)
         Y_rep = y_obs[:, None] + eta_rep
 
-        Xa = Xf + K@(Y_rep - H@Xf)
+        Xa = Xf + K @ (Y_rep - Yf)
 
         self.X = Xa.T  # (m, Nx)
 
@@ -97,3 +109,11 @@ class PO:
         self.x.append(self.X.mean(axis=0))
         if self.store_ensemble:
             self.X_a.append(self.X.copy())
+
+    # 非線形観測のハンドリングに必要
+    def _apply_H(self, X):
+        """X: (Nx, m)"""
+        if self.linear_obs:
+            return self.H @ X  # (Ny, m)
+        else:
+            return self.H(X.T).T  # (Ny, m)
