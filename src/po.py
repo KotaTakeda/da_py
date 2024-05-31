@@ -81,7 +81,7 @@ class PO:
     def update(self, y_obs):
         # !NOTE: 転置している
         Xf = self.X.T  # (Nx, m)
-        xf = Xf
+        xf = Xf.mean(axis=1)
         H = self.H
 
         # NOTE: この実装ではadditive inflationは使えない
