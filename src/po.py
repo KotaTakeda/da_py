@@ -77,21 +77,21 @@ class PO:
     # 更新/解析
     def update(self, y_obs):
         # !NOTE: 転置している
-        X = self.X.T # (Nx, m)
+        Xf = self.X.T # (Nx, m)
         H = self.H
 
         # NOTE: この実装ではadditive inflationは使えない
-        dX = X - X.mean(axis=1, keepdims=True)  # (Nx, m)
-        dX *= self.alpha
-        dY = H@dX  # (Ny, m): 本来はH(X) - H(X).mean(axis=1)
-        K = dX@dY.T@np.linalg.inv(dY@dY.T + self.R) # (Nx, Ny)
+        dXf = Xf - Xf.mean(axis=1, keepdims=True)  # (Nx, m)
+        dXf *= self.alpha
+        dY = H@dXf  # (Ny, m): 本来はH(X) - H(X).mean(axis=1)
+        K = dXf@dY.T@np.linalg.inv(dY@dY.T + self.R) # (Nx, Ny)
 
         eta_rep = np.random.multivariate_normal(np.zeros_like(y_obs), self.R, self.m).T # (m, Ny)
         Y_rep = y_obs[:, None] + eta_rep
 
-        X = X + K@(Y_rep - H@X)
+        Xa = Xf + K@(Y_rep - H@Xf)
 
-        self.X = X.T  # (m, Nx)
+        self.X = Xa.T  # (m, Nx)
 
         # 更新した値のアンサンブル平均xを保存,
         self.x.append(self.X.mean(axis=0))
