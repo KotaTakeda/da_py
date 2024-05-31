@@ -48,7 +48,7 @@ def grid_search2(
 
 def exec_mp(func, params, n_process):
     with get_context("fork").Pool(n_process) as pl:
-        results = np.array(pl.map(func, params))
+        results = list(pl.map(func, params))
         pl.close()
         pl.join()
     return results
@@ -56,5 +56,5 @@ def exec_mp(func, params, n_process):
 
 def exec_mt(func, params, n_workers):
     with ThreadPoolExecutor(max_workers=n_workers) as executor:
-        results = executor.map(func, params)
+        results = list(executor.map(func, params))
     return results
