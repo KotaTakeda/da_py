@@ -123,7 +123,7 @@ class LETKF:
             ((self.m - 1) / self.alpha) * self.I + C @ dY.T
         )  # アンサンブル空間でのP_a．(m, m)
         T = (
-            P_at @ C @ dy + sqrtm((self.m - 1) * P_at)
+            P_at @ C @ dy + np.real(sqrtm((self.m - 1) * P_at))
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
         return (dXf.T @ T).T[:, i]  # (m, Nx)
 

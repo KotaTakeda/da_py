@@ -138,7 +138,7 @@ class ETKF:
             ((self.m - 1) / self.alpha) * self.I + dY.T @ self.invR @ dY
         )  # アンサンブル空間でのP_a．(m, m)
         T = (
-            P_at @ dY.T @ self.invR @ dy + sqrtm((self.m - 1) * P_at)
+            P_at @ dY.T @ self.invR @ dy + np.real(sqrtm((self.m - 1) * P_at))
         ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
         return dXf @ T  # (Nx, m)
 
