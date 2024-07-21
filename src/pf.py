@@ -24,7 +24,7 @@ class ParticleFilter(object):
         self.m = m
         self.idx = np.arange(self.m)
         self.t = 0.0
-        self.X = X_0
+        self.X = X_0.copy()
 
         # 初期化
         self.x = []  # 記録用

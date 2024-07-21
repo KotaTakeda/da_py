@@ -66,7 +66,7 @@ class LETKF:
         self.Nx = Nx
         self.m = m
         self.t = 0.0
-        self.X = X_0
+        self.X = X_0.copy()
         self.I = np.eye(m)  # TODO: メモリ効率改善
 
         # 初期化
