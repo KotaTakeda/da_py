@@ -20,7 +20,7 @@ H: ndarray(dim_y, Nx)
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
 m: アンサンブルメンバーの数
-alpha: inflation factor
+alpha: (>=1): multiplicative inflation parameter s.t. Pf -> alpha*PF
 localization: localizationの設定
 x: ndarray(Nx)
 
