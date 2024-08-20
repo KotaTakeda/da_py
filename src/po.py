@@ -85,7 +85,7 @@ class PO:
             self._update1(y_obs)
         else:
             self._update2(y_obs)
-    
+
     def _update1(self, y_obs):
         # !NOTE: 転置している
         Xf = self.X.T  # (Nx, m)
@@ -94,7 +94,7 @@ class PO:
         m = self.m
 
         dXf = Xf - xf[:, None]  # (Nx, m)
-        Pf = dXf@dXf.T/(m-1)
+        Pf = dXf @ dXf.T / (m - 1)
 
         if self.alpha > 1:  # この意味のmultiplicative inflation
             Pf += self.alpha * np.eye(self.Nx)
@@ -106,7 +106,7 @@ class PO:
         ).T  # (m, Ny)
         Y_rep = y_obs[:, None] + eta_rep
 
-        Xa = Xf + K @ (Y_rep - H @ X)
+        Xa = Xf + K @ (Y_rep - H @ Xf)
 
         self.X = Xa.T  # (m, Nx)
 
@@ -131,7 +131,7 @@ class PO:
             dYf *= self.alpha
             # Xf = xf[:, None] + dXf
 
-        K = dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + (self.m-1)*self.R)  # (Nx, Ny)
+        K = dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + (self.m - 1) * self.R)  # (Nx, Ny)
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
