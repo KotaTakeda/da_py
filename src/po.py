@@ -29,6 +29,7 @@ class PO:
         R,
         alpha=1.0,
         store_ensemble=False,
+        additive_inflation=False,
     ):
         """
         Args:
@@ -46,8 +47,9 @@ class PO:
         self.invR = inv(self.R)
 
         self.alpha = alpha  # inflation用の定数
-
         self.store_ensemble = store_ensemble
+
+        self.additive_inflation = additive_inflation
 
     # 初期アンサンブル
     def initialize(self, X_0):
@@ -79,6 +81,41 @@ class PO:
 
     # 更新/解析
     def update(self, y_obs):
+        if self.linear_obs and self.additive_inflation:
+            self._update1(y_obs)
+        else:
+            self._update2(y_obs)
+    
+    def _update1(self, y_obs):
+        # !NOTE: 転置している
+        Xf = self.X.T  # (Nx, m)
+        xf = Xf.mean(axis=1)
+        H = self.H
+        m = self.m
+
+        dXf = Xf - xf[:, None]  # (Nx, m)
+        Pf = dXf@dXf.T/(m-1)
+
+        if self.alpha > 1:  # この意味のmultiplicative inflation
+            Pf += self.alpha * np.eye(self.Nx)
+
+        K = Pf @ H.T @ np.linalg.inv(H.T @ Pf @ H + self.R)  # (Nx, Ny)
+
+        eta_rep = np.random.multivariate_normal(
+            np.zeros_like(y_obs), self.R, self.m
+        ).T  # (m, Ny)
+        Y_rep = y_obs[:, None] + eta_rep
+
+        Xa = Xf + K @ (Y_rep - H @ X)
+
+        self.X = Xa.T  # (m, Nx)
+
+        # 更新した値のアンサンブル平均xを保存,
+        self.x.append(self.X.mean(axis=0))
+        if self.store_ensemble:
+            self.Xa.append(self.X.copy())
+
+    def _update2(self, y_obs):
         # !NOTE: 転置している
         Xf = self.X.T  # (Nx, m)
         xf = Xf.mean(axis=1)
@@ -94,7 +131,7 @@ class PO:
             dYf *= self.alpha
             # Xf = xf[:, None] + dXf
 
-        K = dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + self.R)  # (Nx, Ny)
+        K = dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + (self.m-1)*self.R)  # (Nx, Ny)
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
