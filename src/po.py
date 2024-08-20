@@ -96,14 +96,14 @@ class PO:
         dXf = Xf - xf[:, None]  # (Nx, m)
         Pf = dXf @ dXf.T / (m - 1)
 
-        if self.alpha > 1:  # この意味のmultiplicative inflation
+        if self.alpha > 0:  # この意味のmultiplicative inflation
             Pf += self.alpha * np.eye(self.Nx)
 
         K = Pf @ H.T @ np.linalg.inv(H.T @ Pf @ H + self.R)  # (Nx, Ny)
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
-        ).T  # (m, Ny)
+        ).T  # (Ny, m)
         Y_rep = y_obs[:, None] + eta_rep
 
         Xa = Xf + K @ (Y_rep - H @ Xf)
