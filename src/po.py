@@ -30,6 +30,7 @@ class PO:
         alpha=1.0,
         store_ensemble=False,
         additive_inflation=False,
+        project_cov=False,
     ):
         """
         Args:
@@ -50,6 +51,8 @@ class PO:
         self.store_ensemble = store_ensemble
 
         self.additive_inflation = additive_inflation
+        
+        self.project_cov = project_cov
 
     # 初期アンサンブル
     def initialize(self, X_0):
@@ -96,8 +99,13 @@ class PO:
         dXf = Xf - xf[:, None]  # (Nx, m)
         Pf = dXf @ dXf.T / (m - 1)
 
-        if self.alpha > 0:  # この意味のmultiplicative inflation
+        # additive inflation
+        if self.alpha > 0:  # この意味のadditive inflation
             Pf += self.alpha * np.eye(self.Nx)
+        
+        # projection
+        if self.project_cov:
+            Pf = H @ Pf @ H.T
 
         K = Pf @ H.T @ np.linalg.inv(H.T @ Pf @ H + self.R)  # (Nx, Ny)
 
@@ -126,7 +134,7 @@ class PO:
         Yf = self._apply_H(Xf)
         dYf = Yf - Yf.mean(axis=1, keepdims=True)  # (Ny, m)
 
-        if self.alpha > 1:  # この意味のmultiplicative inflation
+        if self.alpha > 1.0:  # この意味のmultiplicative inflation
             dXf *= self.alpha
             dYf *= self.alpha
             # Xf = xf[:, None] + dXf
