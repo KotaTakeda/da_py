@@ -45,7 +45,6 @@ class PO:
             self.H = np.vectorize(H, signature="(Nx)->(Ny)")
 
         self.R = R
-        self.invR = inv(self.R)
 
         self.alpha = alpha  # inflation用の定数
         self.store_ensemble = store_ensemble
