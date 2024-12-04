@@ -107,7 +107,7 @@ class PO:
         if self.project_cov:
             Pf = H @ Pf @ H.T
 
-        K = Pf @ H.T @ np.linalg.inv(H.T @ Pf @ H + self.R)  # (Nx, Ny)
+        K = Pf @ H.T @ np.linalg.inv(H @ Pf @ H.T + self.R)  # (Nx, Ny)
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
