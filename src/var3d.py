@@ -5,34 +5,42 @@ from numpy.linalg import inv
 #  3DVar
 # ============================
 class Var3D:
-    def __init__(self, M, H, R, x_0, B, cut_obs_size=0, obs_type=1):
+    def __init__(self, M, H, R):
+        """
+        Args:
+        - M (x, dt) -> x: model dynamics
+        - H (Ny, Nx):observation operator
+        - R (Ny, Ny): covariance of observation noise
+
+        """
         self.M = M
         self.H = H
         self.R = R
-        self.B = B
-        self.x_a = x_0
         self.x = []
-        self.cut_obs_size = cut_obs_size
-        self.obs_type = obs_type
-        self._calc_Kalman_gain()
 
-    # 予報/時間発展
+    def initialize(self, x_0, B):
+        """
+        Args:
+        - x_0: initial state
+        - B: Background error covariance matrix
+        """
+        self.x_a = x_0
+        self.B = B
+        self._calc_kalman_gain()
+
+    # Forecast step
     def forecast(self, dt):
-        # 予報
-        self.x_f = self.M(self.x_a, dt)  # 保存しておく
+        self.x_f = self.M(self.x_a, dt)
 
-        # if log:
-        #     self.x.append(self.x_f)
-
-    # 更新/解析
+    # Analysis step
     def update(self, y_obs):
-        # x 更新
         self.x_a = self.x_f + self.K @ (y_obs - self.H @ self.x_f)
 
-        # 更新した値を保存
+        # store
         self.x.append(self.x_a)
 
-    def _calc_Kalman_gain(self):
+    # Calculate Kalman gain
+    def _calc_kalman_gain(self):
         H = self.H
         B = self.B
         R = self.R

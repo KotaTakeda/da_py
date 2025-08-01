@@ -33,8 +33,8 @@ class ETKF:
         """
         Args:
         - M: (x, dt) -> x: model dynamics
-        - H: x -> y: observation operator
-        - R: x -> y: covariance of observation noise
+        - H: observation operator
+        - R: covariance of observation noise
         - alpha: (>=1): multiplicative inflation parameter s.t. Pf -> alpha*PF
         """
         self.M = M
@@ -103,7 +103,7 @@ class ETKF:
     def _update_T(self, y_obs):
         Xf = self.X.T  # (Nx, m)
         xf = Xf.mean(axis=1)
-        H = self.H
+        # H = self.H
 
         # transformの準備
         dXf = Xf - xf[:, None]  # (Nx, m)
