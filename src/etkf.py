@@ -1,24 +1,10 @@
-from functools import cache
 import numpy as np
-from numpy import eye, random, sqrt, trace
 from numpy.linalg import inv
 from scipy.linalg import sqrtm
 
 # ==========================================
 # EnsembleTransformKalmanFilter(ETKF)
 # ==========================================
-"""
-Arguments
-M: callable(x, dt)
-  状態遷移関数
-H: ndarray(dim_y, Nx)
-  観測行列  
-R: ndarray(dim_y, dim_y)
-  観測の誤差共分散行列
-m: アンサンブルメンバーの数
-alpha: inflation factor
-x: ndarray(Nx)
-"""
 
 
 class ETKF:
@@ -32,10 +18,10 @@ class ETKF:
     ):
         """
         Args:
-        - M: (x, dt) -> x: model dynamics
+        - M: (x, dt) -> x, model dynamics
         - H: observation operator
         - R: covariance of observation noise
-        - alpha: (>=1): multiplicative inflation parameter s.t. Pf -> alpha*PF
+        - alpha: (float>=1), multiplicative inflation parameter s.t. Pf -> alpha*PF
         """
         self.M = M
         self.H = H

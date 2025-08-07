@@ -8,7 +8,7 @@ class ParticleFilter(object):
         self.M = M
         self.h = h
         self.R = R
-        self.sigma_add = add_inflation # <=> Q = sigma_add**2 * I_{Nx}の離散modelノイズ
+        self.sigma_add = add_inflation  # <=> Q = sigma_add**2 * I_{Nx}の離散modelノイズ
         self.N_thr = N_thr
         self.t = 0.0
 
@@ -16,10 +16,9 @@ class ParticleFilter(object):
         self.x = []
         self.resample_log = []
 
-
     # 初期アンサンブル
     def initialize(self, X_0):
-        m, Nx = X_0.shape # ensemble shape
+        m, Nx = X_0.shape  # ensemble shape
         self.Nx = Nx
         self.m = m
         self.idx = np.arange(self.m)
@@ -40,7 +39,9 @@ class ParticleFilter(object):
             self.X[k] = self.M(x, dt)
 
         if self.sigma_add > 0:
-            self.X += np.random.normal(loc=0, scale=self.sigma_add, size=(self.m, self.Nx)) # x^(k) + xi(k), xi(k) ~ N(0, sigma_add**2 * I_{Nx})
+            self.X += np.random.normal(
+                loc=0, scale=self.sigma_add, size=(self.m, self.Nx)
+            )  # x^(k) + xi(k), xi(k) ~ N(0, sigma_add**2 * I_{Nx})
 
         self.Xf.append(self.X.copy())
 
@@ -51,23 +52,29 @@ class ParticleFilter(object):
             self._resample()
             self._calculate_weights(y_obs)
 
-        self.x.append(self.W@self.X)
+        self.x.append(self.W @ self.X)
         self.Xa.append(self.X)
 
     def _resample(self):
         reindex = np.random.choice(
-            self.m, size=self.m, replace=True, p=self.W,
+            self.m,
+            size=self.m,
+            replace=True,
+            p=self.W,
         )  # Weightに従ってサンプル．
         self.X = self.X[reindex]
-
 
     def _negative_log_likelihood(self, x, y_obs):
         h = self.h
         R = self.R
         dim_obs = R.shape[0]
         # return -np.log(multivariate_normal.pdf(h(x), mean=y_obs, cov=R))
-        return 0.5*(y_obs - h(x)) @ inv(R) @ (y_obs - h(x)) + 0.5*np.log(np.linalg.det(R)) + 0.5*dim_obs*np.log(2*np.pi)
-    
+        return (
+            0.5 * (y_obs - h(x)) @ inv(R) @ (y_obs - h(x))
+            + 0.5 * np.log(np.linalg.det(R))
+            + 0.5 * dim_obs * np.log(2 * np.pi)
+        )
+
     def _calculate_weights(self, y_obs):
         W = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
         W -= np.min(W)

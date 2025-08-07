@@ -1,6 +1,4 @@
 import numpy as np
-from numpy import random
-from numpy.linalg import inv
 import ot
 from .pf import ParticleFilter
 
