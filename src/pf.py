@@ -24,6 +24,7 @@ class ParticleFilter(object):
         self.idx = np.arange(self.m)
         self.t = 0.0
         self.X = X_0.copy()
+        self.W = np.ones(m) / m
 
         # 初期化
         self.x = []  # 記録用
@@ -56,6 +57,7 @@ class ParticleFilter(object):
         self.Xa.append(self.X)
 
     def _resample(self):
+        # resample
         reindex = np.random.choice(
             self.m,
             size=self.m,
@@ -63,6 +65,8 @@ class ParticleFilter(object):
             p=self.W,
         )  # Weightに従ってサンプル．
         self.X = self.X[reindex]
+        # initialize weight
+        self.W = np.ones(self.m) / self.m
 
     def _negative_log_likelihood(self, x, y_obs):
         h = self.h
@@ -76,14 +80,17 @@ class ParticleFilter(object):
         )
 
     def _calculate_weights(self, y_obs):
-        W = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
-        W -= np.min(W)
-        W = np.exp(-W)
-        W /= W.sum()
-        self.W = W
+        # nll_i = -log p(y_obs | x_i)
+        nll = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
+
+        # normalize
+        nll_min = np.min(nll)
+        w_shift = np.exp(-(nll - nll_min))
+
+        self.W = w_shift / w_shift.sum()
 
     def _caluculate_eff(self, W):
-        return 1 / (W @ W) / len(W)
+        return 1 / np.sum(W**2)
 
     # def _resample(self, W):  # この実装は精度が悪い．
     #     m = self.m
