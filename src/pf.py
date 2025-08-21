@@ -1,6 +1,4 @@
 import numpy as np
-from numpy import random
-from numpy.linalg import inv
 
 
 class ParticleFilter(object):
@@ -21,8 +19,10 @@ class ParticleFilter(object):
         m, Nx = X_0.shape  # ensemble shape
         self.Nx = Nx
         self.m = m
+        self.invR = np.linalg.inv(self.R)
         self.idx = np.arange(self.m)
         self.t = 0.0
+
         self.X = X_0.copy()
         self.W = np.ones(m) / m
 
@@ -40,16 +40,17 @@ class ParticleFilter(object):
             self.X[k] = self.M(x, dt)
 
         if self.sigma_add > 0:
+            # x^(k) + xi(k), xi(k) ~ N(0, sigma_add**2 * I_{Nx})
             self.X += np.random.normal(
                 loc=0, scale=self.sigma_add, size=(self.m, self.Nx)
-            )  # x^(k) + xi(k), xi(k) ~ N(0, sigma_add**2 * I_{Nx})
+            )
 
         self.Xf.append(self.X.copy())
 
     def update(self, y_obs):
         self._calculate_weights(y_obs)
 
-        if self._caluculate_eff(self.W) < self.N_thr:
+        if self._caluculate_eff(self.W) < self.N_thr * self.m:
             self._resample()
             self._calculate_weights(y_obs)
 
@@ -70,13 +71,14 @@ class ParticleFilter(object):
 
     def _negative_log_likelihood(self, x, y_obs):
         h = self.h
-        R = self.R
-        dim_obs = R.shape[0]
+        invR = self.invR
+        dy = y_obs - h(x)
+        # dim_obs = R.shape[0]
         # return -np.log(multivariate_normal.pdf(h(x), mean=y_obs, cov=R))
         return (
-            0.5 * (y_obs - h(x)) @ inv(R) @ (y_obs - h(x))
-            + 0.5 * np.log(np.linalg.det(R))
-            + 0.5 * dim_obs * np.log(2 * np.pi)
+            0.5 * dy @ invR @ dy
+            # + 0.5 * np.log(np.linalg.det(R)) # const.
+            # + 0.5 * dim_obs * np.log(2 * np.pi) # const.
         )
 
     def _calculate_weights(self, y_obs):
