@@ -4,6 +4,7 @@ from multiprocessing import get_context
 
 import numpy as np
 from da.localization import calc_dist, gaspari_cohn
+from da.etkf import ETKF
 from numpy import eye, random, sqrt, trace
 from numpy.linalg import inv
 from scipy.linalg import sqrtm
@@ -28,15 +29,15 @@ Implementation:
     iteration:
         - 各観測で状態変数の数N=40回
         - 各i(in 1~40)で
-            - x_iを推定．
-            - x_iに近い観測を用いる．-> localization
+            - x_iを推定.
+            - x_iに近い観測を用いる. -> localization
     localization:
-        - R-locで実装．R-inverseにlocal functionをかける．
+        - R-locで実装. R-inverseにlocal functionをかける.
         - local functionとしてgaspari cohn function
 """
 
 
-class LETKF:
+class LETKF(ETKF):
     def __init__(
         self,
         M,
@@ -48,84 +49,65 @@ class LETKF:
         localization="gaspari-cohn",
         multi_process=False,
     ):
-        self.M = M
-        self.H = H
-        self.R = R
-        self.t = 0.0
+        """ "
+        Args:
+        - M: (x, dt) -> x, model dynamics
+        - H: observation operator
+        - R: (Ny, Ny), covariance of observation noise
+        - alpha: (float>=1), multiplicative inflation parameter s.t. Pf -> alpha^2*Pf
+        - store_ensemble: bool, whether to store ensemble members at each step
+        - c: localization radius
+        - localization: str, currently only "gaspari-cohn" is supported
+        - multi_process: bool, whether to use multi processing for loop over state variables
+        """
+        super().__init__(M, H, R, alpha, store_ensemble)
 
-        self.alpha = alpha  # inflation用の定数
         self.c = c
         self.localization = localization
         self.multi_process = multi_process
 
-        self.store_ensemble = store_ensemble
-
-    # 初期アンサンブル
-    def initialize(self, X_0):
-        m, Nx = X_0.shape  # ensemble shape
-        self.Nx = Nx
-        self.m = m
-        self.t = 0.0
-        self.X = X_0.copy()
-        self.I = np.eye(m)  # TODO: メモリ効率改善
-
-        # 初期化
-        self.x = []  # 記録用
-        self.x_f = []
-        if self.store_ensemble:
-            self.Xf = []
-            self.Xa = []
-
-    # 予報/時間発展
-    def forecast(self, dt):
-        """dt: 予測時間"""
-        # アンサンブルで x(k) 予測
-        for i, s in enumerate(self.X):
-            self.X[i] = self.M(s, dt)
-
-        self.t += dt
-        self.x_mean = self.X.mean(axis=0)
-        self.x_f.append(self.x_mean)
-
     # 更新/解析
     def update(self, y_obs):
-        x_f = self.x_mean
-        Xf = self.X
-        H = self.H
+        Xf = self.X.T  # (Nx, m)
+        xf = Xf.mean(axis=1)
 
-        dXf = Xf - x_f  # (m, N)
-        dY = (H @ dXf.T).T  # (m, dim_y)
-        dy = y_obs - H @ x_f
+        # transformの準備
+        dXf = Xf - xf[:, None]  # (Nx, m)
+        Yf = self._apply_H(Xf)
+        dYf = Yf - Yf.mean(axis=1, keepdims=True)
+        dy = y_obs - self._apply_H(xf)
 
         # 各成分でループ
         if self.multi_process:
-            # multi.cpu_count()
-            n_process = 4
+            n_process = 4  # multi.cpu_count()
             with get_context("fork").Pool(n_process) as pl:
-                process = partial(self._transform_each, dy=dy, dY=dY, dXf=dXf)
+                process = partial(self._transform_each, dy=dy, dY=dYf, dXf=dXf)
                 self.X = np.array(pl.map(process, list(range(self.Nx)))).T
                 pl.close()
                 pl.join()
         else:
             for i in range(self.Nx):
-                self.X[:, i] = self.x_mean[i] + self._transform_each(i, dy, dY, dXf)
+                self.X[:, i] = xf[i] + self._transform_each(i, dy, dYf, dXf).squeeze()
 
-        # 記録: 更新した値のアンサンブル平均xを保存,
+        # Save the analysis mean
         self.x.append(self.X.mean(axis=0))
-        # self.trP.append(
-        # sqrt(trace(dXf.T @ dXf) / (self.Nx - 1))
-        # )  # 推定誤差共分散P_fのtraceを保存
 
     # 本体
     def _transform_each(self, i, dy, dY, dXf):
-        C = dY @ self._locR(i)  # localization: invRの各i行にrho_iをかける．(m, dim_y)
-        P_at = inv(
-            ((self.m - 1) / self.alpha) * self.I + C @ dY.T
-        )  # アンサンブル空間でのP_a．(m, m)
-        T = (
-            P_at @ C @ dy + np.real(sqrtm((self.m - 1) * P_at))
-        ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-        return (dXf.T @ T).T[:, i]  # (m, Nx)
+        # use _transform_T in etkf.py
+        # localized Rinv
+        locRinv = self._locR(i)
+        # replace Rinv
+        orig_Rinv = self.Rinv
+        self.Rinv = locRinv
+
+        # transform i-th component of dXf
+        dXfi = dXf[i, :][None, :] # (1, m)
+        dXi = self._transform_T(dy, dY, dXfi)
+
+        # restore Rinv
+        self.Rinv = orig_Rinv
+        return dXi # (1, m)
 
     # localization用の関数
     @cache
@@ -136,7 +118,8 @@ class LETKF:
 
     @cache
     def _locR(self, i):
-        return self._rho(i) * inv(self.R)
+        """"rho(j - i) * Rinv [j] """
+        return self._rho(i) * self.Rinv  # (Ny, Ny)
 
     # def calc_sqrtm(self, mat):
     #     return self._symmetric(sqrtm(self._symmetric(mat)))

@@ -23,8 +23,9 @@ class ETKF:
         Args:
         - M: (x, dt) -> x, model dynamics
         - H: observation operator
-        - R: covariance of observation noise
-        - alpha: (float>=1), multiplicative inflation parameter s.t. Pf -> alpha*PF
+        - R: (Ny, Ny), covariance of observation noise
+        - alpha: (float>=1), multiplicative inflation parameter s.t. Pf -> alpha^2*PF
+        - store_ensemble: bool, whether to store ensemble members at each step
         """
         self.M = M
         self.H = H
@@ -33,7 +34,7 @@ class ETKF:
             self.H = np.vectorize(H, signature="(Nx)->(Ny)")
 
         self.R = R
-        self.invR = inv(self.R)
+        self.Rinv = inv(self.R)
 
         self.alpha = alpha  # inflation用の定数
 
@@ -46,7 +47,7 @@ class ETKF:
         self.m = m
         self.t = 0.0
         self.X = X_0.copy()
-        self.I = np.eye(m)  # TODO: メモリ効率改善
+        self.I = np.eye(m)
 
         # 初期化
         self.x = []  # 記録用
@@ -71,24 +72,6 @@ class ETKF:
     def update(self, y_obs):
         self._update_T(y_obs)
 
-        # TODO: 様子を見て以下を削除
-        # x_f = self.x_f[-1]
-        # Xf = self.X
-        # H = self.H
-
-        # # transformの準備
-        # dXf = Xf - x_f  # (m, Nx)
-        # dY = (H @ dXf.T).T  # (m, Ny): 本来はH(Xf) - H(Xf).mean(axis=0)
-        # dy = y_obs - H @ x_f  # (Ny, )
-
-        # # transform
-        # self.X = x_f + self._transform(dy, dY, dXf)
-
-        # # 更新した値のアンサンブル平均xを保存,
-        # self.x.append(self.X.mean(axis=0))
-        # if self.store_ensemble:
-        #     self.Xa.append(self.X.copy())
-
     def _update_T(self, y_obs):
         Xf = self.X.T  # (Nx, m)
         xf = Xf.mean(axis=1)
@@ -98,9 +81,7 @@ class ETKF:
         dXf = Xf - xf[:, None]  # (Nx, m)
         Yf = self._apply_H(Xf)
         dYf = Yf - Yf.mean(axis=1, keepdims=True)
-        # dY = H @ dXf  # (m, Ny): 本来はH(Xf) - H(Xf).mean(axis=1)
         dy = y_obs - self._apply_H(xf)
-        # dy = y_obs - H @ xf  # (Ny, )
 
         # transform
         Xa = xf[:, None] + self._transform_T(dy, dYf, dXf)  # (Nx, m)
@@ -113,23 +94,46 @@ class ETKF:
             self.Xa.append(self.X.copy())
 
     # 本体
-    # def _transform(self, dy, dY, dXf):
+    # def _transform_T(self, dy, dY, dXf):
     #     P_at = inv(
-    #         ((self.m - 1) / self.alpha) * self.I + dY @ self.invR @ dY.T
+    #         ((self.m - 1) / self.alpha) * self.I + dY.T @ self.Rinv @ dY
     #     )  # アンサンブル空間でのP_a．(m, m)
     #     T = (
-    #         P_at @ dY @ self.invR @ dy + sqrtm((self.m - 1) * P_at)
+    #         P_at @ dY.T @ self.Rinv @ dy + np.real(sqrtm((self.m - 1) * P_at))
     #     ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-    #     return (dXf.T @ T).T  # (m, Nx)
+    #     return dXf @ T  # (Nx, m)
 
-    # 本体
     def _transform_T(self, dy, dY, dXf):
-        P_at = inv(
-            ((self.m - 1) / self.alpha) * self.I + dY.T @ self.invR @ dY
-        )  # アンサンブル空間でのP_a．(m, m)
-        T = (
-            P_at @ dY.T @ self.invR @ dy + np.real(sqrtm((self.m - 1) * P_at))
-        ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
+        """
+        Transform the ensemble perturbations to the analysis ensemble perturbations with the mean update.
+        Args:
+        - dy: (Ny,)
+        - dY: (Nx, Ny)
+        - dXf: (Nx, m)
+        Returns:
+        - dx + dXa = dXf @ T': (Nx, m)
+        """
+        m = self.m
+
+        # S = ((m-1)/alpha)I + dY^T R^{-1} dY
+        dYtRinv = dY.T @ self.Rinv  # (Ny, m)
+        S = ((m - 1) / self.alpha) * self.I + dYtRinv @ dY  # (m, m)
+        S = 0.5 * (S + S.T)  # for numerical stability
+
+        # Symmetric eigenvalue decomposition
+        s, U = np.linalg.eigh(S)  # S = U diag(s) U^T
+        eps = 1e-60
+        s = np.clip(s, eps, None)
+
+        # Symmetric square root：sqrt((m-1) P_at) = sqrt((m-1) S^{-1}) = U diag(sqrt((m-1)/s)) U^T
+        T_sqrt = (U * np.sqrt((m - 1) / s)) @ U.T  # (m, m) symmetric
+
+        # Mean part: T_mean = P_at dm, dm = dY^T R^{-1} dy
+        dm = dYtRinv @ dy  # (m,)
+        T_mean = U @ ((U.T @ dm) / s)  # (m,), divide by s element-wise
+
+        # Transformation including the mean update T = w_mean + T_sqrt
+        T = T_mean[:, None] + T_sqrt  # (m, m)
         return dXf @ T  # (Nx, m)
 
     # 非線形観測のハンドリングに必要
