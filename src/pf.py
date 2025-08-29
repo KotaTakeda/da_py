@@ -19,7 +19,7 @@ class ParticleFilter(object):
         m, Nx = X_0.shape  # ensemble shape
         self.Nx = Nx
         self.m = m
-        self.invR = np.linalg.inv(self.R)
+        self.Rinv = np.linalg.inv(self.R)
         self.idx = np.arange(self.m)
         self.t = 0.0
 
@@ -71,12 +71,12 @@ class ParticleFilter(object):
 
     def _negative_log_likelihood(self, x, y_obs):
         h = self.h
-        invR = self.invR
+        Rinv = self.Rinv
         dy = y_obs - h(x)
         # dim_obs = R.shape[0]
         # return -np.log(multivariate_normal.pdf(h(x), mean=y_obs, cov=R))
         return (
-            0.5 * dy @ invR @ dy
+            0.5 * dy @ Rinv @ dy
             # + 0.5 * np.log(np.linalg.det(R)) # const.
             # + 0.5 * dim_obs * np.log(2 * np.pi) # const.
         )
