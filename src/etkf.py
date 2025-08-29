@@ -81,9 +81,7 @@ class ETKF:
         dXf = Xf - xf[:, None]  # (Nx, m)
         Yf = self._apply_H(Xf)
         dYf = Yf - Yf.mean(axis=1, keepdims=True)
-        # dY = H @ dXf  # (m, Ny): 本来はH(Xf) - H(Xf).mean(axis=1)
         dy = y_obs - self._apply_H(xf)
-        # dy = y_obs - H @ xf  # (Ny, )
 
         # transform
         Xa = xf[:, None] + self._transform_T(dy, dYf, dXf)  # (Nx, m)
@@ -113,7 +111,7 @@ class ETKF:
         - dY: (Nx, Ny)
         - dXf: (Nx, m)
         Returns:
-        - dx + dXa = dXf @ T' (Nx, m)
+        - dx + dXa = dXf @ T': (Nx, m)
         """
         m = self.m
 
