@@ -5,6 +5,7 @@ obsevation: linear and Gauss noise
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from da.l96 import lorenz96
 from da.scheme import rk4
 from da.loss import loss_rms
@@ -50,6 +51,7 @@ for n in range(1,N):
     x = scheme(lorenz96, t, x, p, dt)
     x_true[n] = x[:]
 
+# observation
 obs_per = 5
 Dt = obs_per * dt
 x_true = x_true[360*20:][::obs_per]  # 1年分を捨て，6h毎に取り出す
@@ -75,7 +77,7 @@ X_0 = x_0 + np.random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, dim
 # RUN DA
 etkf = ETKF(M, H, R, alpha=1.1)
 etkf.initialize(X_0)
-for y_obs in y:
+for y_obs in tqdm(y):
     etkf.forecast(Dt)
     etkf.update(y_obs)
 
