@@ -4,6 +4,9 @@ from scipy.linalg import sqrtm
 
 # ==========================================
 # EnsembleTransformKalmanFilter(ETKF)
+# Refs.
+# - C. H. Bishop, B. J. Etherton, and S. J. Majumdar, “Adaptive Sampling with the Ensemble Transform Kalman Filter. Part I: Theoretical Aspects,” Monthly Weather Review, vol. 129, no. 3, pp. 420–436, Mar. 2001.
+# - M. K. Tippett, J. L. Anderson, C. H. Bishop, T. M. Hamill, and J. S. Whitaker, “Ensemble Square Root Filters,” Monthly Weather Review, vol. 131, no. 7, pp. 1485–1490, 2003.
 # ==========================================
 
 
