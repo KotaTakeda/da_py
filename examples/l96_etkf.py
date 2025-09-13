@@ -59,10 +59,10 @@ x_true = x_true[360*20:][::obs_per]  # 1年分を捨て，6h毎に取り出す
 # 観測値: 観測誤差共分散, 後で定数倍の変化をさせる.
 H = np.eye(J)
 r = 1.0
-R = r*np.eye(J)
+R = r**2*np.eye(J) # FIXME: define on observation space
 # noise = np.random.normal(loc=0, scale=np.sqrt(r), size=x_true.shape)
-noise = np.random.multivariate_normal(mean=np.zeros(J), cov=R, size=len(x_true))
-y = (H@x_true.T).T + noise
+noise = np.random.multivariate_normal(mean=np.zeros(J), cov=R, size=len(x_true)) # FIXME: sample on observation space
+y = (H@x_true.T).T + noise 
 
 # アンサンブル数
 m = 20
