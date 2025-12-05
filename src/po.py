@@ -110,7 +110,7 @@ class PO:
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
-        ).T  # (Ny, m)
+        ).T  # (Ny, m) # FIXME: 内部で毎回コレスキーが使われているので，コレスキー分解を保存しておいて使い回すべき
         Y_rep = y_obs[:, None] + eta_rep
 
         Xa = Xf + K @ (Y_rep - H @ Xf)
@@ -142,7 +142,7 @@ class PO:
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
-        ).T  # (m, Ny)
+        ).T  # (m, Ny) # FIXME: 内部で毎回コレスキーが使われているので，コレスキー分解を保存しておいて使い回すべき
         Y_rep = y_obs[:, None] + eta_rep
 
         Xa = Xf + K @ (Y_rep - Yf)
