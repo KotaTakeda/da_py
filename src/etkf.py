@@ -53,6 +53,7 @@ class ETKF:
         self.x = []  # 記録用
         self.x_f = []
         if self.store_ensemble:
+            self.X0 = X_0.copy()
             self.Xf = []
             self.Xa = []
 

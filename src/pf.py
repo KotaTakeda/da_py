@@ -10,9 +10,6 @@ class ParticleFilter(object):
         self.N_thr = N_thr
         self.t = 0.0
 
-        # 記録用
-        self.x = []
-        self.resample_log = []
 
     # 初期アンサンブル
     def initialize(self, X_0):
@@ -27,9 +24,13 @@ class ParticleFilter(object):
         self.W = np.ones(m) / m
 
         # 初期化
-        self.x = []  # 記録用
+        self.X0 = X_0.copy()
+        self.x = []
         self.Xa = []
         self.Xf = []
+
+        # 記録用
+        # self.resample_log = []
 
     # def resampling_rate(self):
     #     return np.mean(self.resample_log)

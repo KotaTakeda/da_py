@@ -63,9 +63,10 @@ class PO:
         self.I = np.eye(m)  # TODO: メモリ効率改善
 
         # 初期化
-        self.x = []  # 記録用
+        self.x = []
         self.x_f = []
         if self.store_ensemble:
+            self.X0 = X_0.copy()
             self.Xf = []
             self.Xa = []
 
