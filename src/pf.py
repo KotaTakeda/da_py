@@ -1,15 +1,27 @@
+"""
+Particle Filter (Sequential Monte Carlo/Sequential Importance Resampling)
+"""
+
 import numpy as np
 
 
 class ParticleFilter(object):
-    def __init__(self, M, h, R, add_inflation=0.0, N_thr=1.0):
+    def __init__(
+        self,
+        M,
+        h,
+        R,
+        add_inflation=0.0,
+        N_thr=1.0,
+        resample_option="systematic",  # ["multinomial", "systematic", "residual"]
+    ):
         self.M = M
         self.h = h
         self.R = R
         self.sigma_add = add_inflation  # <=> Q = sigma_add**2 * I_{Nx}の離散modelノイズ
         self.N_thr = N_thr
+        self.resample_option = resample_option
         self.t = 0.0
-
 
     # 初期アンサンブル
     def initialize(self, X_0):
@@ -59,16 +71,44 @@ class ParticleFilter(object):
         self.Xa.append(self.X)
 
     def _resample(self):
-        # resample
-        reindex = np.random.choice(
-            self.m,
-            size=self.m,
-            replace=True,
-            p=self.W,
-        )  # Weightに従ってサンプル．
+        # Ref: Doucet, A., Johansen, A.M., n.d. A Tutorial on Particle Filtering and Smoothing: Fifteen years later. in Stoyanov, J., 2012. The Oxford Handbook of Nonlinear Filtering. Journal of the Royal Statistical Society: Series A (Statistics in Society) 175, 824–825. https://doi.org/10.1111/j.1467-985X.2012.01045_6.x
+        if self.resample_option == "multinomial":
+            reindex = self._multinomial_resample(self.W)
+        elif self.resample_option == "systematic":
+            reindex = self._systematic_resample(self.W)
+        elif self.resample_option == "residual":
+            reindex = self._residual_resample(self.W)
+        else:
+            raise ValueError(f"Unknown resample option: {self.resample_option}")
+
         self.X = self.X[reindex]
         # initialize weight
         self.W = np.ones(self.m) / self.m
+
+    def _multinomial_resample(self, W):
+        m = len(W)
+        return np.random.choice(m, size=m, replace=True, p=W)
+
+    def _systematic_resample(self, W):
+        m = len(W)
+        cumulative = np.cumsum(W)
+        cumulative[-1] = 1.0
+        u0 = np.random.rand() / m
+        positions = u0 + np.arange(m) / m
+        return np.searchsorted(cumulative, positions)
+
+    def _residual_resample(self, W):
+        m = len(W)
+        N = np.floor(m * W).astype(int)
+        R_sum = N.sum()
+        indices = np.repeat(np.arange(m), N)
+
+        if R_sum < m:
+            residual = m * W - N
+            residual /= residual.sum()
+            extra = np.random.choice(m, size=m - R_sum, replace=True, p=residual)
+            indices = np.concatenate([indices, extra])
+        return indices
 
     def _negative_log_likelihood(self, x, y_obs):
         h = self.h
@@ -77,7 +117,10 @@ class ParticleFilter(object):
         # dim_obs = R.shape[0]
         # return -np.log(multivariate_normal.pdf(h(x), mean=y_obs, cov=R))
         return (
-            0.5 * dy @ Rinv @ dy
+            0.5
+            * dy
+            @ Rinv
+            @ dy
             # + 0.5 * np.log(np.linalg.det(R)) # const.
             # + 0.5 * dim_obs * np.log(2 * np.pi) # const.
         )
@@ -94,24 +137,3 @@ class ParticleFilter(object):
 
     def _caluculate_eff(self, W):
         return 1 / np.sum(W**2)
-
-    # def _resample(self, W):  # この実装は精度が悪い．
-    #     m = self.m
-    #     reindex = []
-    #     u = np.random.rand() / m
-    #     for _ in range(m):
-    #         reindex.append(self._F_inv(u, W))
-    #         u += 1 / m
-    #     return reindex
-
-    # # 重み累積分布関数の逆関数
-    # def _F_inv(self, u, W):
-    #     """
-    #     W: np ndarray (m, )
-    #     u: float
-    #     """
-    #     F = W.cumsum()
-    #     if u < F[0]:
-    #         return 0
-    #     else:
-    #         return F[F < u].argmax() + 1
