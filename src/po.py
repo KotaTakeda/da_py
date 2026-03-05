@@ -61,6 +61,8 @@ class PO:
         self.t = 0.0
         self.X = X_0.copy()
         self.I = np.eye(m)  # TODO: メモリ効率改善
+        if self.project_cov:
+            self.Pi = self.H.T @ np.linalg.inv(self.H @ self.H.T) @ self.H
 
         # 初期化
         self.x = []
@@ -105,7 +107,7 @@ class PO:
         
         # projection
         if self.project_cov:
-            Pf = H @ Pf @ H.T
+            Pf = self.Pi @ Pf @ self.Pi
 
         K = Pf @ H.T @ np.linalg.inv(H @ Pf @ H.T + self.R)  # (Nx, Ny)
 
