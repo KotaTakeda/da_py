@@ -50,7 +50,7 @@ class PO:
         self.store_ensemble = store_ensemble
 
         self.additive_inflation = additive_inflation
-        
+
         self.project_cov = project_cov
 
     # 初期アンサンブル
@@ -104,12 +104,14 @@ class PO:
         # additive inflation
         if self.alpha > 0:  # この意味のadditive inflation
             Pf += self.alpha * np.eye(self.Nx)
-        
+
         # projection
         if self.project_cov:
             Pf = self.Pi @ Pf @ self.Pi
 
-        K = Pf @ H.T @ np.linalg.inv(H @ Pf @ H.T + self.R)  # (Nx, Ny)
+        K = (
+            Pf @ H.T @ np.linalg.inv(H @ Pf @ H.T + self.R)
+        )  # (Nx, Ny) FIXME: 逆行列を明示計算するのは非効率.
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
@@ -141,7 +143,9 @@ class PO:
             dYf *= self.alpha
             # Xf = xf[:, None] + dXf
 
-        K = dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + (self.m - 1) * self.R)  # (Nx, Ny)
+        K = (
+            dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + (self.m - 1) * self.R)
+        )  # (Nx, Ny) FIXME: 逆行列を明示計算するのは非効率.
 
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
