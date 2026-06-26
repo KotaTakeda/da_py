@@ -11,6 +11,7 @@ from scipy.linalg import sqrtm
 
 # ==========================================
 # LocalEnsembleTransformKalmanFilter(LETKF)
+# TODO: update as Hunt, B.R., Kostelich, E.J., Szunyogh, I., 2007. Efficient data assimilation for spatiotemporal chaos: A local ensemble transform Kalman filter. Physica D: Nonlinear Phenomena, Data Assimilation 230, 112–126. https://doi.org/10.1016/j.physd.2006.11.00
 # ==========================================
 """
 Parameters
