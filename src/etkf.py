@@ -7,6 +7,7 @@ from scipy.linalg import sqrtm
 # Refs.
 # - C. H. Bishop, B. J. Etherton, and S. J. Majumdar, “Adaptive Sampling with the Ensemble Transform Kalman Filter. Part I: Theoretical Aspects,” Monthly Weather Review, vol. 129, no. 3, pp. 420–436, Mar. 2001.
 # - M. K. Tippett, J. L. Anderson, C. H. Bishop, T. M. Hamill, and J. S. Whitaker, “Ensemble Square Root Filters,” Monthly Weather Review, vol. 131, no. 7, pp. 1485–1490, 2003.
+# TODO: update as Hunt, B.R., Kostelich, E.J., Szunyogh, I., 2007. Efficient data assimilation for spatiotemporal chaos: A local ensemble transform Kalman filter. Physica D: Nonlinear Phenomena, Data Assimilation 230, 112–126. https://doi.org/10.1016/j.physd.2006.11.00
 # ==========================================
 
 
