@@ -14,6 +14,26 @@ dependencies = ["numpy>=1.19", "scipy>=1.1"]
 
 [project.optional-dependencies]
 etpf = ["POT>=0.9.1"]
+examples = [
+    "ipykernel",
+    "jupyter",
+    "matplotlib",
+    "pandas",
+    "plotly",
+    "seaborn",
+    "tqdm",
+]
+dev = [
+    "ipykernel",
+    "jupyter",
+    "jupyter_contrib_nbextensions",
+    "matplotlib",
+    "pandas",
+    "plotly",
+    "ruff",
+    "seaborn",
+    "tqdm",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

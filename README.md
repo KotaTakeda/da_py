@@ -17,10 +17,22 @@ GitHub から直接インストールできます。
 pip install git+https://github.com/KotaTakeda/da_py.git
 ```
 
-ローカルで開発・実行する場合は、まずパッケージ本体を editable install してください。ソースコードは `src/da/` 配下にあります。
+examples 用の依存も含める場合は `examples` extra を指定してください。
 
 ```sh
-pip install -e .
+pip install "da_py[examples] @ git+https://github.com/KotaTakeda/da_py.git"
+```
+
+`etpf` を使う場合は `etpf` extra も指定します。
+
+```sh
+pip install "da_py[examples,etpf] @ git+https://github.com/KotaTakeda/da_py.git"
+```
+
+ローカルで開発する場合は、リポジトリ直下で editable install してください。開発用依存は `dev` extra に含まれます。
+
+```sh
+pip install -e ".[dev]"
 ```
 
 インストール後の import 名は `da` です。
@@ -31,31 +43,6 @@ from da.pf import ParticleFilter
 from da.l63 import lorenz63
 from da.l96 import lorenz96
 from da.scheme import rk4
-```
-
-## Dependencies
-
-パッケージ本体の主要依存は以下です。
-
-- `numpy`
-- `scipy`
-
-examples や一部機能で必要な依存は `requirements.txt` にまとめています。
-
-```sh
-pip install -r requirements.txt
-```
-
-開発用の追加依存は `requirements-dev.txt` にまとめています。
-
-```sh
-pip install -r requirements-dev.txt
-```
-
-`etpf` を使う場合は、追加で `POT` が必要です。
-
-```sh
-pip install -e ".[etpf]"
 ```
 
 ## Examples

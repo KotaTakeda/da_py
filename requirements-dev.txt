@@ -1,5 +1,0 @@
-# Development environment
--r requirements.txt
-
-ruff
-jupyter_contrib_nbextensions
