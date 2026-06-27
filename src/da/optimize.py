@@ -3,7 +3,7 @@ from multiprocessing import get_context
 
 import numpy as np
 import pandas as pd
-from da.params import prod_params_kv
+from .params import prod_params_kv
 
 
 def gen_assim_func(system, fixed_params, y, dt):

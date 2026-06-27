@@ -16,7 +16,7 @@ dependencies = ["numpy>=1.19", "scipy>=1.1"]
 etpf = ["POT>=0.9.1"]
 
 [tool.setuptools]
-package-dir = { da = "src" }
+package-dir = {"" = "src"}
 packages = ["da"]
 
 [tool.black]

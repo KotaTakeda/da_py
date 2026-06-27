@@ -3,8 +3,8 @@ from functools import cache, partial
 from multiprocessing import get_context
 
 import numpy as np
-from da.localization import calc_dist, gaspari_cohn
-from da.etkf import ETKF
+from .localization import calc_dist, gaspari_cohn
+from .etkf import ETKF
 from numpy import eye, random, sqrt, trace
 from numpy.linalg import inv
 from scipy.linalg import sqrtm
@@ -18,7 +18,7 @@ Parameters
 M: callable(x, dt)
   状態遷移関数
 H: ndarray(dim_y, Nx)
-  観測行列  
+  観測行列
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
 m: アンサンブルメンバーの数
