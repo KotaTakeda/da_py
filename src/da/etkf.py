@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.linalg import inv
-from scipy.linalg import sqrtm
 
 # ==========================================
 # EnsembleTransformKalmanFilter(ETKF)

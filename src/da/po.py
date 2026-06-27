@@ -1,8 +1,4 @@
-from functools import cache
 import numpy as np
-from numpy import eye, random, sqrt, trace
-from numpy.linalg import inv
-from scipy.linalg import sqrtm
 
 # ==========================================
 # EnsembleKalmanFilter (Perturbed Observation: PO)
@@ -12,7 +8,7 @@ Arguments
 M: callable(x, dt)
   状態遷移関数
 H: ndarray(dim_y, Nx)
-  観測行列  
+  観測行列
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
 m: アンサンブルメンバーの数

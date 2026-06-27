@@ -5,9 +5,6 @@ from multiprocessing import get_context
 import numpy as np
 from .localization import calc_dist, gaspari_cohn
 from .etkf import ETKF
-from numpy import eye, random, sqrt, trace
-from numpy.linalg import inv
-from scipy.linalg import sqrtm
 
 # ==========================================
 # LocalEnsembleTransformKalmanFilter(LETKF)
