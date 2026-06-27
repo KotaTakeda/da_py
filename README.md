@@ -17,7 +17,7 @@ GitHub から直接インストールできます。
 pip install git+https://github.com/KotaTakeda/da_py.git
 ```
 
-ローカルで開発・実行する場合は、まずパッケージ本体を editable install してください。
+ローカルで開発・実行する場合は、まずパッケージ本体を editable install してください。ソースコードは `src/da/` 配下にあります。
 
 ```sh
 pip install -e .
