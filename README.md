@@ -1,6 +1,6 @@
 # data assimilation py
 
-データ同化用の Python コードです。Lorenz63、Lorenz96、Hénon map などの低次元力学系と、Particle Filter、ETKF、LETKF、3DVar などのデータ同化手法を含みます。
+データ同化用の Python コードです。Lorenz63、Lorenz96などの低次元力学系と、Particle Filter、ETKF、LETKF、3DVar などのデータ同化手法を含みます。
 
 > 開発中のコードも多いため、研究・実験用途を主な対象としています。
 
