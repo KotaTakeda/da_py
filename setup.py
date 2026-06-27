@@ -9,5 +9,6 @@ setup(
     license="MIT",
     package_dir={"da": "src"},
     packages=["da"],
-    install_requires=["numpy>=1.19", "scipy>=1.1", "POT>=0.9.1"],  # not strict
+    install_requires=["numpy>=1.19", "scipy>=1.1"],  # not strict
+    extras_require={"etpf": ["POT>=0.9.1"]},
 )

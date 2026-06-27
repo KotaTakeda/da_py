@@ -42,7 +42,12 @@ examples や一部機能では、追加で以下を使用します。
 - `plotly`
 - `pandas`
 - `tqdm`
-- `POT`
+
+`etpf` を使う場合は、追加で `POT` が必要です。
+
+```sh
+pip install "da_py[etpf] @ git+https://github.com/KotaTakeda/da_py.git"
+```
 
 開発・notebook 実行用の依存をまとめて入れる場合は、必要に応じて以下を使用してください。
 
