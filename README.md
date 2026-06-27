@@ -17,6 +17,12 @@ GitHub から直接インストールできます。
 pip install git+https://github.com/KotaTakeda/da_py.git
 ```
 
+ローカルで開発・実行する場合は、まずパッケージ本体を editable install してください。
+
+```sh
+pip install -e .
+```
+
 インストール後の import 名は `da` です。
 
 ```py
@@ -34,26 +40,22 @@ from da.scheme import rk4
 - `numpy`
 - `scipy`
 
-examples や一部機能では、追加で以下を使用します。
+examples や一部機能で必要な依存は `requirements.txt` にまとめています。
 
-- `jupyter-notebook`
-- `matplotlib`
-- `seaborn`
-- `plotly`
-- `pandas`
-- `tqdm`
+```sh
+pip install -r requirements.txt
+```
+
+開発用の追加依存は `requirements-dev.txt` にまとめています。
+
+```sh
+pip install -r requirements-dev.txt
+```
 
 `etpf` を使う場合は、追加で `POT` が必要です。
 
 ```sh
-pip install "da_py[etpf] @ git+https://github.com/KotaTakeda/da_py.git"
-```
-
-開発・notebook 実行用の依存をまとめて入れる場合は、必要に応じて以下を使用してください。
-
-```sh
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+pip install -e ".[etpf]"
 ```
 
 ## Examples
