@@ -5,6 +5,9 @@ data/*
 # vscode
 .vscode/*
 
+# local python version
+.python-version
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
