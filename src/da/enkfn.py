@@ -47,8 +47,9 @@ def estimate_l1_enkfn_dual(
 
     Parameters follow the ETKF internals of this package: ``dY`` has shape
     ``(Ny, m)``, ``dy`` has shape ``(Ny,)``, and ``R`` has shape ``(Ny, Ny)``.
-    The returned ``l1`` inflates anomalies, so covariance inflation is
-    ``lambda_cov = l1**2``.
+    The scalar optimized here is ``l1`` itself, the anomaly inflation factor.
+    The corresponding covariance inflation and effective prior precision are
+    ``lambda_cov = l1**2`` and ``zeta = (m - 1) / lambda_cov``.
     """
     R = np.asarray(R, dtype=float)
     R_cholesky = np.linalg.cholesky(R)
@@ -182,6 +183,13 @@ def _estimate_l1_enkfn_dual_from_cholesky(
                 l1, converged, n_iter = solve_bounded()
             else:
                 l1, converged, n_iter = solution
+        else:
+            l1_bounded, converged_bounded, n_iter_bounded = solve_bounded()
+            if objective(l1_bounded) < objective(l1):
+                used_method = "bounded"
+                l1 = l1_bounded
+                converged = converged_bounded
+                n_iter = n_iter_bounded
     elif method == "brentq":
         solution = solve_brentq()
         if solution is None:
@@ -197,12 +205,16 @@ def _estimate_l1_enkfn_dual_from_cholesky(
         l1, converged, n_iter = solve_bounded()
 
     lambda_cov = l1**2
+    zeta = m1 / lambda_cov
     info = {
+        "l1": l1,
+        "zeta": zeta,
         "lambda_cov": lambda_cov,
         "objective": float(objective(l1)),
         "gradient": float(grad(l1)),
         "converged": converged,
         "n_iter": n_iter,
+        "requested_method": method,
         "method": used_method,
         "singular_values": s.copy(),
         "du": du.copy(),

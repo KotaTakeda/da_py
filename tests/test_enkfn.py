@@ -13,8 +13,10 @@ def test_estimate_l1_enkfn_dual_returns_positive_anomaly_inflation():
     l1, info = estimate_l1_enkfn_dual(dY, dy, R)
 
     assert l1 > 0
+    np.testing.assert_allclose(info["l1"], l1)
     np.testing.assert_allclose(info["lambda_cov"], l1**2)
-    assert info["method"] == "newton"
+    np.testing.assert_allclose(info["zeta"], (dY.shape[1] - 1) / l1**2)
+    assert info["requested_method"] == "newton"
 
 
 def test_estimate_l1_enkfn_dual_is_deterministic():
@@ -87,3 +89,14 @@ def test_enkfn_initialize_resets_inflation_diagnostics():
 
     enkfn.initialize(X0)
     assert enkfn.inflation_diagnostics == []
+
+
+def test_estimate_l1_enkfn_dual_compares_newton_root_with_bounded_minimum():
+    dY = np.array([[-7.1e-5, 7.1e-5]])
+    dy = np.array([10.0])
+    R = np.array([[1.0]])
+
+    l1, info = estimate_l1_enkfn_dual(dY, dy, R)
+
+    assert info["method"] == "bounded"
+    assert l1 > 1.0e4
