@@ -1,0 +1,46 @@
+import numpy as np
+
+from da.enkfn import EnKFN, estimate_l1_enkfn_dual
+from da.etkf import ETKF
+
+
+def test_estimate_l1_enkfn_dual_returns_positive_anomaly_inflation():
+    dY = np.array([[-1.0, 0.0, 1.0], [0.5, -1.0, 0.5]])
+    dy = np.array([0.25, -0.75])
+    R = np.diag([0.5, 2.0])
+
+    l1, info = estimate_l1_enkfn_dual(dY, dy, R)
+
+    assert l1 > 0
+    np.testing.assert_allclose(info["lambda_cov"], l1**2)
+
+
+def test_estimate_l1_enkfn_dual_is_deterministic():
+    dY = np.array([[-1.0, 0.0, 1.0], [0.5, -1.0, 0.5]])
+    dy = np.array([0.25, -0.75])
+    R = np.diag([0.5, 2.0])
+
+    l1_a, info_a = estimate_l1_enkfn_dual(dY, dy, R)
+    l1_b, info_b = estimate_l1_enkfn_dual(dY, dy, R)
+
+    np.testing.assert_allclose(l1_a, l1_b)
+    np.testing.assert_allclose(info_a["objective"], info_b["objective"])
+
+
+def test_enkfn_update_returns_same_ensemble_shape_as_etkf():
+    X0 = np.array([[-1.0, 0.0], [0.0, 0.25], [1.0, -0.25]])
+    H = np.array([[1.0, 0.0]])
+    R = np.array([[0.5]])
+    y = np.array([0.1])
+
+    etkf = ETKF(lambda x, dt: x, H, R)
+    etkf.initialize(X0)
+    etkf.update(y)
+
+    enkfn = EnKFN(lambda x, dt: x, H, R)
+    enkfn.initialize(X0)
+    enkfn.update(y)
+
+    assert enkfn.X.shape == etkf.X.shape == X0.shape
+    assert len(enkfn.inflation_diagnostics) == 1
+    assert enkfn.inflation_diagnostics[0]["l1"] > 0
