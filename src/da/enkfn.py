@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import minimize_scalar, newton, root_scalar
+from scipy.optimize import brentq, minimize_scalar, newton
 
 from da.etkf import ETKF
 
@@ -137,14 +137,15 @@ def _estimate_l1_enkfn_dual_from_cholesky(
             upper *= 10.0
         if grad(upper) < 0:
             return None
-        result = root_scalar(
+        l1, result = brentq(
             grad,
-            bracket=(lower, upper),
-            method="brentq",
+            lower,
+            upper,
             xtol=xtol,
             maxiter=max_iter,
+            full_output=True,
         )
-        return float(result.root), bool(result.converged), int(result.iterations)
+        return float(l1), bool(result.converged), int(result.iterations)
 
     def solve_bounded():
         result = minimize_scalar(
