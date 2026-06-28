@@ -23,7 +23,7 @@ class ETKF:
         - M: (x, dt) -> x, model dynamics
         - H: observation operator
         - R: (Ny, Ny), covariance of observation noise
-        - alpha: (float>=1), multiplicative inflation parameter s.t. Pf -> alpha^2*PF
+        - alpha: (float>=1), anomaly inflation factor, A -> alpha*A and Pf -> alpha^2*Pf
         - store_ensemble: bool, whether to store ensemble members at each step
         """
         self.M = M
@@ -35,7 +35,7 @@ class ETKF:
         self.R = R
         self.Rinv = inv(self.R)
 
-        self.alpha = alpha  # inflation用の定数
+        self.alpha = alpha  # anomaly inflation factor
 
         self.store_ensemble = store_ensemble
 
@@ -94,15 +94,6 @@ class ETKF:
             self.Xa.append(self.X.copy())
 
     # 本体
-    # def _transform_T(self, dy, dY, dXf):
-    #     P_at = inv(
-    #         ((self.m - 1) / self.alpha) * self.I + dY.T @ self.Rinv @ dY
-    #     )  # アンサンブル空間でのP_a．(m, m)
-    #     T = (
-    #         P_at @ dY.T @ self.Rinv @ dy + np.real(sqrtm((self.m - 1) * P_at))
-    #     ).T  # 注:Pythonの仕様上第１項(mean update)が行ベクトルとして足されているので転置．(m, m)
-    #     return dXf @ T  # (Nx, m)
-
     def _transform_T(self, dy, dY, dXf):
         """
         Transform the ensemble perturbations to the analysis ensemble perturbations with the mean update.
@@ -114,10 +105,12 @@ class ETKF:
         - dx + dXa = dXf @ T': (Nx, m)
         """
         m = self.m
+        cov_inflation = self.alpha**2
 
-        # S = ((m-1)/alpha)I + dY^T R^{-1} dY
+        # alpha inflates anomalies: A -> alpha*A, hence Pf -> alpha^2*Pf.
+        # In ensemble space this is S = ((m-1)/alpha^2)I + dY^T R^{-1} dY.
         dYtRinv = dY.T @ self.Rinv  # (Ny, m)
-        S = ((m - 1) / self.alpha) * self.I + dYtRinv @ dY  # (m, m)
+        S = ((m - 1) / cov_inflation) * self.I + dYtRinv @ dY  # (m, m)
         S = 0.5 * (S + S.T)  # for numerical stability
 
         # Symmetric eigenvalue decomposition

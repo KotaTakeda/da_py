@@ -45,6 +45,17 @@ from da.l96 import lorenz96
 from da.scheme import rk4
 ```
 
+## Inflation convention
+
+Multiplicative inflation parameters named `alpha` are anomaly inflation factors:
+
+```text
+A -> alpha * A
+Pf -> alpha^2 * Pf
+```
+
+This convention applies to `ETKF`, `LETKF`, and the non-additive `PO` update. In `PO(additive_inflation=True)`, `alpha` remains an additive covariance inflation amplitude.
+
 ## Examples
 
 `examples/` 以下に Jupyter Notebook と一部 Python script があります。
@@ -132,9 +143,9 @@ Reference: P. J. Leeuwen, Y. Cheng, and S. Reich, *Nonlinear Data Assimilation*.
 - Assimilate
   - ETKF
     - m = 10 ~ 80 by 10
-    - alpha = 1.0 ~ 1.1
+    - alpha = 1.0 ~ 1.1  # anomaly inflation
   - LETKF
     - m = 8 ~ 20 by 4
-    - alpha = 1.0 ~ 1.1 by 0.02
+    - alpha = 1.0 ~ 1.1 by 0.02  # anomaly inflation
     - rho = 5 ~ 10 by 1
 ```

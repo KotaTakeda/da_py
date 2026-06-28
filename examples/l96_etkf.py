@@ -75,6 +75,7 @@ P_0 = 25*np.eye(J)
 X_0 = x_0 + np.random.multivariate_normal(np.zeros_like(x_0), P_0, m)  # (m, dim_x)
 
 # RUN DA
+# alpha is an anomaly inflation factor: A -> alpha*A, Pf -> alpha**2*Pf.
 etkf = ETKF(M, H, R, alpha=1.1)
 etkf.initialize(X_0)
 for y_obs in tqdm(y):

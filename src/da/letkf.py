@@ -19,7 +19,7 @@ H: ndarray(dim_y, Nx)
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
 m: アンサンブルメンバーの数
-alpha: (>=1): multiplicative inflation parameter s.t. Pf -> alpha*PF
+alpha: (>=1): anomaly inflation factor, A -> alpha*A and Pf -> alpha^2*Pf
 localization: localizationの設定
 x: ndarray(Nx)
 
@@ -52,7 +52,7 @@ class LETKF(ETKF):
         - M: (x, dt) -> x, model dynamics
         - H: observation operator
         - R: (Ny, Ny), covariance of observation noise
-        - alpha: (float>=1), multiplicative inflation parameter s.t. Pf -> alpha^2*Pf
+        - alpha: (float>=1), anomaly inflation factor, A -> alpha*A and Pf -> alpha^2*Pf
         - store_ensemble: bool, whether to store ensemble members at each step
         - c: localization radius
         - localization: str, currently only "gaspari-cohn" is supported
@@ -92,7 +92,7 @@ class LETKF(ETKF):
 
     # 本体
     def _transform_each(self, i, dy, dY, dXf):
-        # use _transform_T in etkf.py
+        # use _transform_T in etkf.py; alpha has anomaly-inflation semantics there.
         # localized Rinv
         locRinv = self._locR(i)
         # replace Rinv

@@ -12,7 +12,8 @@ H: ndarray(dim_y, Nx)
 R: ndarray(dim_y, dim_y)
   観測の誤差共分散行列
 m: アンサンブルメンバーの数
-alpha: inflation factor
+alpha: additive covariance inflation if additive_inflation=True; otherwise
+  anomaly inflation factor, A -> alpha*A and Pf -> alpha^2*Pf
 x: ndarray(Nx)
 """
 
@@ -42,7 +43,7 @@ class PO:
 
         self.R = R
 
-        self.alpha = alpha  # inflation用の定数
+        self.alpha = alpha  # inflation parameter; semantics depend on additive_inflation
         self.store_ensemble = store_ensemble
 
         self.additive_inflation = additive_inflation
@@ -97,7 +98,7 @@ class PO:
         dXf = Xf - xf[:, None]  # (Nx, m)
         Pf = dXf @ dXf.T / (m - 1)
 
-        # additive inflation
+        # additive covariance inflation
         if self.alpha > 0:  # この意味のadditive inflation
             Pf += self.alpha * np.eye(self.Nx)
 
@@ -135,6 +136,7 @@ class PO:
         dYf = Yf - Yf.mean(axis=1, keepdims=True)  # (Ny, m)
 
         if self.alpha > 1.0:  # この意味のmultiplicative inflation
+            # Multiplicative alpha inflates anomalies: A -> alpha*A, Pf -> alpha^2*Pf.
             dXf *= self.alpha
             dYf *= self.alpha
             # Xf = xf[:, None] + dXf
