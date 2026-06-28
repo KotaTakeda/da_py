@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from da.enkfn import EnKFN, estimate_l1_enkfn_dual
 from da.etkf import ETKF
@@ -44,3 +45,12 @@ def test_enkfn_update_returns_same_ensemble_shape_as_etkf():
     assert enkfn.X.shape == etkf.X.shape == X0.shape
     assert len(enkfn.inflation_diagnostics) == 1
     assert enkfn.inflation_diagnostics[0]["l1"] > 0
+    np.testing.assert_allclose(
+        enkfn.inflation_diagnostics[0]["effective_alpha"],
+        enkfn.inflation_diagnostics[0]["l1"],
+    )
+
+
+def test_enkfn_rejects_fixed_alpha_to_avoid_double_inflation():
+    with pytest.raises(ValueError, match="estimates total anomaly inflation"):
+        EnKFN(lambda x, dt: x, np.array([[1.0]]), np.array([[1.0]]), alpha=1.2)

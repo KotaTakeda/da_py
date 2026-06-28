@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize_scalar, root_scalar
 
 from da.etkf import ETKF
 
@@ -38,7 +38,6 @@ def estimate_l1_enkfn_dual(
     xN=1.0,
     g=0.0,
     *,
-    initial_l1=1.0,
     xtol=1e-8,
     max_iter=100,
 ):
@@ -75,8 +74,6 @@ def estimate_l1_enkfn_dual(
     eN, cL = _hyperprior_coeffs(s, m, xN=xN, g=g)
 
     s2 = s**2
-    s4 = s2**2
-
     def dgn(l1):
         return (l1 * s) ** 2 + m1
 
@@ -90,37 +87,24 @@ def estimate_l1_enkfn_dual(
             + 2 * cL / l1
         )
 
-    def hess(l1):
-        return (
-            8 * l1**2 * np.sum(s4 * du[:rk] ** 2 / dgn(l1) ** 3)
-            + 6 * eN / l1**4
-            - 2 * cL / l1**2
+    method = "brentq"
+    lower = 1.0e-8
+    upper = 1.0
+    while grad(upper) < 0 and upper < 1.0e8:
+        upper *= 10.0
+
+    if grad(upper) >= 0:
+        result = root_scalar(
+            grad,
+            bracket=(lower, upper),
+            method="brentq",
+            xtol=xtol,
+            maxiter=max_iter,
         )
-
-    l1 = float(initial_l1)
-    converged = False
-    method = "newton"
-    n_iter = 0
-    for n_iter in range(1, max_iter + 1):
-        gp = grad(l1)
-        hp = hess(l1)
-        if abs(gp) <= xtol:
-            converged = True
-            break
-        if not np.isfinite(hp) or hp <= 0:
-            break
-        step = gp / hp
-        candidate = l1 - step
-        if not np.isfinite(candidate) or candidate <= 0:
-            break
-        if objective(candidate) > objective(l1):
-            break
-        l1 = candidate
-        if abs(step) <= xtol * max(1.0, abs(l1)):
-            converged = True
-            break
-
-    if not converged:
+        l1 = float(result.root)
+        converged = bool(result.converged)
+        n_iter = int(result.iterations)
+    else:
         method = "bounded"
         result = minimize_scalar(
             objective,
@@ -149,6 +133,14 @@ def estimate_l1_enkfn_dual(
 
 
 class EnKFN(ETKF):
+    """ETKF wrapper with EnKF-N adaptive anomaly inflation.
+
+    Unlike ETKF, EnKFN does not accept a fixed multiplicative ``alpha`` in
+    addition to the adaptive factor. The estimated ``l1`` is the total anomaly
+    inflation applied in the ETKF transform, and ``lambda_cov = l1**2`` is the
+    corresponding covariance inflation.
+    """
+
     def __init__(
         self,
         M,
@@ -160,6 +152,8 @@ class EnKFN(ETKF):
         store_ensemble=False,
         store_diagnostics=True,
     ):
+        if alpha != 1.0:
+            raise ValueError("EnKFN estimates total anomaly inflation; use alpha=1.0")
         super().__init__(M, H, R, alpha=alpha, store_ensemble=store_ensemble)
         self.xN = xN
         self.g = g
@@ -176,10 +170,9 @@ class EnKFN(ETKF):
         dy = y_obs - self._apply_H(xf)
 
         l1, info = estimate_l1_enkfn_dual(dYf, dy, self.R, xN=self.xN, g=self.g)
-        effective_alpha = self.alpha * l1
 
         previous_alpha = self.alpha
-        self.alpha = effective_alpha
+        self.alpha = l1
         try:
             Xa = xf[:, None] + self._transform_T(dy, dYf, dXf)
         finally:
@@ -192,5 +185,5 @@ class EnKFN(ETKF):
         if self.store_diagnostics:
             info = dict(info)
             info["l1"] = l1
-            info["effective_alpha"] = effective_alpha
+            info["effective_alpha"] = l1
             self.inflation_diagnostics.append(info)
