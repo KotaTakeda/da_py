@@ -243,6 +243,10 @@ class EnKFN(ETKF):
         self.store_diagnostics = store_diagnostics
         self.inflation_diagnostics = []
 
+    def initialize(self, X_0):
+        super().initialize(X_0)
+        self.inflation_diagnostics = []
+
     def _update_T(self, y_obs):
         Xf = self.X.T
         xf = Xf.mean(axis=1)

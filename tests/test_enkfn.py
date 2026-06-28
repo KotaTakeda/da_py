@@ -75,3 +75,15 @@ def test_enkfn_reuses_cholesky_factor_between_updates(monkeypatch):
     enkfn.update(np.array([0.2]))
 
     assert calls == 1
+
+
+def test_enkfn_initialize_resets_inflation_diagnostics():
+    X0 = np.array([[-1.0], [0.0], [1.0]])
+    enkfn = EnKFN(lambda x, dt: x, np.array([[1.0]]), np.array([[0.5]]))
+
+    enkfn.initialize(X0)
+    enkfn.update(np.array([0.1]))
+    assert len(enkfn.inflation_diagnostics) == 1
+
+    enkfn.initialize(X0)
+    assert enkfn.inflation_diagnostics == []
