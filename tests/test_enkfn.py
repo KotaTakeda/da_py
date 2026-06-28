@@ -14,6 +14,7 @@ def test_estimate_l1_enkfn_dual_returns_positive_anomaly_inflation():
 
     assert l1 > 0
     np.testing.assert_allclose(info["lambda_cov"], l1**2)
+    assert info["method"] == "newton"
 
 
 def test_estimate_l1_enkfn_dual_is_deterministic():
@@ -54,3 +55,23 @@ def test_enkfn_update_returns_same_ensemble_shape_as_etkf():
 def test_enkfn_rejects_fixed_alpha_to_avoid_double_inflation():
     with pytest.raises(ValueError, match="estimates total anomaly inflation"):
         EnKFN(lambda x, dt: x, np.array([[1.0]]), np.array([[1.0]]), alpha=1.2)
+
+
+def test_enkfn_reuses_cholesky_factor_between_updates(monkeypatch):
+    calls = 0
+    original_cholesky = np.linalg.cholesky
+
+    def counting_cholesky(a):
+        nonlocal calls
+        calls += 1
+        return original_cholesky(a)
+
+    monkeypatch.setattr(np.linalg, "cholesky", counting_cholesky)
+
+    X0 = np.array([[-1.0], [0.0], [1.0]])
+    enkfn = EnKFN(lambda x, dt: x, np.array([[1.0]]), np.array([[0.5]]))
+    enkfn.initialize(X0)
+    enkfn.update(np.array([0.1]))
+    enkfn.update(np.array([0.2]))
+
+    assert calls == 1
