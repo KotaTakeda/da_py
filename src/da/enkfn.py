@@ -183,13 +183,6 @@ def _estimate_l1_enkfn_dual_from_cholesky(
                 l1, converged, n_iter = solve_bounded()
             else:
                 l1, converged, n_iter = solution
-        else:
-            l1_bounded, converged_bounded, n_iter_bounded = solve_bounded()
-            if objective(l1_bounded) < objective(l1):
-                used_method = "bounded"
-                l1 = l1_bounded
-                converged = converged_bounded
-                n_iter = n_iter_bounded
     elif method == "brentq":
         solution = solve_brentq()
         if solution is None:

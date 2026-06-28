@@ -91,12 +91,13 @@ def test_enkfn_initialize_resets_inflation_diagnostics():
     assert enkfn.inflation_diagnostics == []
 
 
-def test_estimate_l1_enkfn_dual_compares_newton_root_with_bounded_minimum():
+def test_estimate_l1_enkfn_dual_bounded_option_handles_large_innovation():
     dY = np.array([[-7.1e-5, 7.1e-5]])
     dy = np.array([10.0])
     R = np.array([[1.0]])
 
-    l1, info = estimate_l1_enkfn_dual(dY, dy, R)
+    l1, info = estimate_l1_enkfn_dual(dY, dy, R, method="bounded")
 
+    assert info["requested_method"] == "bounded"
     assert info["method"] == "bounded"
     assert l1 > 1.0e4
