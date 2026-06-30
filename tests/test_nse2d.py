@@ -90,6 +90,17 @@ def test_as_forecast_accepts_da_model_signature():
     np.testing.assert_allclose(out, expected)
 
 
+def test_spectral_step_matches_real_space_step():
+    model = _model(nx=8, ny=8)
+    x, y = _grid(model)
+    omega = np.sin(x) + np.cos(2 * y)
+
+    omega_next = model.step(omega, dt=1.0e-3)
+    omega_hat_next = model.step_spectral(model.rfft(omega), dt=1.0e-3)
+
+    np.testing.assert_allclose(model.irfft(omega_hat_next), omega_next)
+
+
 def test_observation_operators_are_deterministic_and_shape_consistent():
     model = _model(nx=8, ny=8)
     x, y = _grid(model)
@@ -107,6 +118,21 @@ def test_observation_operators_are_deterministic_and_shape_consistent():
     g2 = grid.apply_flat(flat)
     assert g1.shape == (grid.obs_dim,)
     np.testing.assert_allclose(g1, g2)
+
+
+def test_independent_low_mode_observation_uses_minimal_real_coefficients():
+    model = _model(nx=8, ny=8)
+    x, y = _grid(model)
+    omega = np.sin(x) + np.cos(y)
+    omega_hat = model.rfft(omega)
+
+    obs = model.independent_low_mode_observation(kmax=1)
+    y_real = obs.observe(omega)
+    y_hat = obs.observe_spectral(omega_hat)
+
+    assert obs.obs_dim == 9
+    assert y_real.shape == (obs.obs_dim,)
+    np.testing.assert_allclose(y_real, y_hat)
 
 
 def test_grid_observation_output_does_not_alias_state():

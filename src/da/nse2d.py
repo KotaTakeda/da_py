@@ -87,6 +87,12 @@ class NSE2DTorus:
     def ifft(self, field_hat):
         return np.fft.ifft2(field_hat).real
 
+    def rfft(self, field):
+        return np.fft.rfft2(self._as_state(field))
+
+    def irfft(self, field_hat):
+        return np.fft.irfft2(field_hat, s=self.shape)
+
     def derivative(self, field, axis):
         field_hat = self.fft(field)
         if axis in (0, "y"):
@@ -148,6 +154,25 @@ class NSE2DTorus:
             return y_next.astype(dtype, copy=False)
         return y_next
 
+    def step_spectral(self, omega_hat, dt):
+        """Advance one rfft2 vorticity state by one time step."""
+        omega = self.irfft(omega_hat)
+        return self.rfft(self.step(omega, dt))
+
+    def solve_spectral(self, omega_hat0, dt, n_steps, *, store_every=1):
+        """Integrate a trajectory whose public state is rfft2 vorticity."""
+        if n_steps < 0:
+            raise ValueError("n_steps must be non-negative")
+        if store_every <= 0:
+            raise ValueError("store_every must be positive")
+        omega_hat = np.asarray(omega_hat0).copy()
+        out = [omega_hat.copy()]
+        for step in range(1, n_steps + 1):
+            omega_hat = self.step_spectral(omega_hat, dt)
+            if step % store_every == 0:
+                out.append(omega_hat.copy())
+        return np.stack(out, axis=0)
+
     def solve(self, omega0, dt, n_steps, *, store_every=1):
         if n_steps < 0:
             raise ValueError("n_steps must be non-negative")
@@ -207,6 +232,9 @@ class NSE2DTorus:
     def low_mode_observation(self, kmax, component="vorticity"):
         return LowModeObservation(self, kmax=kmax, component=component)
 
+    def independent_low_mode_observation(self, kmax):
+        return IndependentLowModeObservation(self, kmax=kmax)
+
     def grid_observation(self, stride=1):
         return GridObservation(self, stride=stride)
 
@@ -247,6 +275,61 @@ class LowModeObservation:
 
     def matrix_free_apply(self, x_flat):
         return self.apply_flat(x_flat)
+
+
+@dataclass
+class IndependentLowModeObservation:
+    """Observe non-redundant low rfft2 coefficients of a real vorticity field."""
+
+    model: NSE2DTorus
+    kmax: int
+
+    def __post_init__(self):
+        if self.kmax < 0:
+            raise ValueError("kmax must be non-negative")
+        self.indices = []
+        self.real_only = []
+        ky_index = np.fft.fftfreq(self.model.ny) * self.model.ny
+        kx_index = np.fft.rfftfreq(self.model.nx) * self.model.nx
+        for iy, ky in enumerate(ky_index):
+            for ix, kx in enumerate(kx_index):
+                if abs(kx) > self.kmax or abs(ky) > self.kmax:
+                    continue
+                if ix == 0 and ky < 0:
+                    continue
+                if self.model.nx % 2 == 0 and ix == self.model.nx // 2 and ky < 0:
+                    continue
+                self_conjugate_x = ix == 0 or (
+                    self.model.nx % 2 == 0 and ix == self.model.nx // 2
+                )
+                self_conjugate_y = iy == 0 or (
+                    self.model.ny % 2 == 0 and iy == self.model.ny // 2
+                )
+                is_real = self_conjugate_x and self_conjugate_y
+                self.indices.append((iy, ix))
+                self.real_only.append(is_real)
+        self.state_dim = self.model.state_dim
+        self.spectral_shape = (self.model.ny, self.model.nx // 2 + 1)
+        self.obs_dim = sum(1 if real else 2 for real in self.real_only)
+
+    def observe_spectral(self, omega_hat):
+        coeffs = np.asarray(omega_hat).reshape(self.spectral_shape)
+        values = []
+        for index, real_only in zip(self.indices, self.real_only, strict=False):
+            coeff = coeffs[index] / self.model.state_dim
+            values.append(coeff.real)
+            if not real_only:
+                values.append(coeff.imag)
+        return np.asarray(values)
+
+    def observe(self, omega):
+        return self.observe_spectral(self.model.rfft(omega))
+
+    def apply_flat(self, x_flat):
+        return self.observe(np.asarray(x_flat).reshape(self.model.shape))
+
+    def apply_spectral_flat(self, x_hat_flat):
+        return self.observe_spectral(np.asarray(x_hat_flat).reshape(self.spectral_shape))
 
 
 @dataclass
