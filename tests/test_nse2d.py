@@ -109,6 +109,18 @@ def test_observation_operators_are_deterministic_and_shape_consistent():
     np.testing.assert_allclose(g1, g2)
 
 
+def test_grid_observation_output_does_not_alias_state():
+    model = _model(nx=8, ny=8)
+    x, y = _grid(model)
+    omega = np.sin(x) + np.cos(y)
+    omega_before = omega.copy()
+
+    observed = model.grid_observation(stride=1).observe(omega)
+    observed += 1.0
+
+    np.testing.assert_allclose(omega, omega_before)
+
+
 def test_short_trajectory_is_reproducible():
     model = _model(nx=8, ny=8)
     x, y = _grid(model)

@@ -266,7 +266,7 @@ class GridObservation:
 
     def observe(self, state):
         omega = np.asarray(state).reshape(self.model.shape)
-        return omega[:: self.stride, :: self.stride].reshape(-1)
+        return omega[:: self.stride, :: self.stride].reshape(-1).copy()
 
     def apply_flat(self, x_flat):
         return self.observe(np.asarray(x_flat).reshape(self.model.shape))
