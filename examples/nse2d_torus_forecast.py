@@ -22,7 +22,7 @@ def main():
     print("low-mode observation dimension:", obs.obs_dim)
     print("low-mode observation norm:", np.linalg.norm(y_obs))
 
-    forecast = model.forecast_batch_fn(dt=1.0e-2, n_steps=2, flatten=True)
+    forecast = model.forecast_batch_fn(dt=1.0e-2, n_steps=2)
     ensemble = np.stack(
         [
             omega0.reshape(-1),

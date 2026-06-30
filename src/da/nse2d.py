@@ -154,48 +154,31 @@ class NSE2DTorus:
         omega = self._as_state(omega)
         return float(0.5 * np.mean(omega**2))
 
-    def forecast_fn(self, dt, n_steps=1, flatten=True):
-        def forecast(x):
-            arr = np.asarray(x)
-            state = arr.reshape(self.shape) if flatten else self._as_state(arr)
-            y = self.solve(state, dt, n_steps, store_every=n_steps)[-1]
-            return y.reshape(-1).astype(arr.dtype, copy=False) if flatten else y
+    def _forecast_flat(self, x, dt, n_steps):
+        arr = np.asarray(x)
+        omega = arr.reshape(self.shape)
+        for _ in range(n_steps):
+            omega = self.step(omega, dt)
+        return omega.reshape(-1).astype(arr.dtype, copy=False)
 
-        return forecast
-
-    def forecast_batch_fn(self, dt, n_steps=1, flatten=True):
-        one = self.forecast_fn(dt, n_steps=n_steps, flatten=flatten)
-
-        def forecast_batch(x):
-            arr = np.asarray(x)
-            if flatten and arr.ndim == 1:
-                return one(arr)
-            if flatten:
-                if arr.ndim != 2 or arr.shape[1] != self.state_dim:
-                    raise ValueError(
-                        f"expected batch shape (m, {self.state_dim}), got {arr.shape}"
-                    )
-                return np.stack([one(member) for member in arr], axis=0)
-            if arr.shape == self.shape:
-                return one(arr)
-            if arr.ndim != 3 or arr.shape[1:] != self.shape:
-                raise ValueError(f"expected batch shape (m, {self.ny}, {self.nx})")
-            return np.stack([one(member) for member in arr], axis=0)
-
-        return forecast_batch
-
-    def as_forecast(self, dt=None, n_steps=1, flatten=True):
+    def as_forecast(self, n_steps=1):
         if n_steps <= 0:
             raise ValueError("n_steps must be positive")
 
-        def forecast(x, runtime_dt=None):
-            if runtime_dt is None:
-                if dt is None:
-                    raise TypeError("runtime dt is required when no fixed dt is set")
-                step_dt = dt
-            else:
-                step_dt = runtime_dt / n_steps
-            return self.forecast_batch_fn(step_dt, n_steps=n_steps, flatten=flatten)(x)
+        def forecast(x, dt):
+            return self._forecast_flat(x, dt / n_steps, n_steps)
+
+        return forecast
+
+    def forecast_fn(self, dt, n_steps=1):
+        return lambda x: self._forecast_flat(x, dt, n_steps)
+
+    def forecast_batch_fn(self, dt, n_steps=1):
+        def forecast(x):
+            arr = np.asarray(x)
+            if arr.ndim == 1:
+                return self._forecast_flat(arr, dt, n_steps)
+            return np.stack([self._forecast_flat(member, dt, n_steps) for member in arr])
 
         return forecast
 
