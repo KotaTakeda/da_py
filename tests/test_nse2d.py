@@ -82,7 +82,7 @@ def test_as_forecast_accepts_da_model_signature():
     omega = np.sin(x) + np.cos(y)
     flat = omega.reshape(-1)
 
-    forecast = model.as_forecast(n_steps=2)
+    forecast = model.as_forecast(internal_steps=2)
     out = forecast(flat, 2.0e-3)
     expected = model.forecast_fn(dt=1.0e-3, n_steps=2)(flat)
 

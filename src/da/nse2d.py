@@ -6,7 +6,8 @@ Usage:
     omega1 = model.step(omega0, dt=0.01)
     traj = model.solve(omega0, dt=0.01, n_steps=100)
 
-    M = model.as_forecast(n_steps=5)  # M(x_flat, dt) -> x_flat
+    # internal_steps subdivides the DA forecast interval dt.
+    M = model.as_forecast(internal_steps=5)  # M(x_flat, dt) -> x_flat
     obs = model.grid_observation(stride=4)
 """
 
@@ -173,12 +174,17 @@ class NSE2DTorus:
             omega = self.step(omega, dt)
         return omega.reshape(-1).astype(arr.dtype, copy=False)
 
-    def as_forecast(self, n_steps=1):
-        if n_steps <= 0:
-            raise ValueError("n_steps must be positive")
+    def as_forecast(self, internal_steps=1):
+        """Return a da_py model callback ``M(x_flat, dt) -> x_flat``.
+
+        ``internal_steps`` is the number of RK4 substeps used inside one
+        assimilation forecast interval ``dt``.
+        """
+        if internal_steps <= 0:
+            raise ValueError("internal_steps must be positive")
 
         def forecast(x, dt):
-            return self._forecast_flat(x, dt / n_steps, n_steps)
+            return self._forecast_flat(x, dt / internal_steps, internal_steps)
 
         return forecast
 
