@@ -1,4 +1,4 @@
-"""Minimal 2D Navier-Stokes model for da_py experiments.
+"""Minimal vorticity-form 2D Navier-Stokes model for da_py experiments.
 
 Usage:
     cfg = NSE2DConfig(nx=64, ny=64, viscosity=1e-3)
@@ -209,6 +209,8 @@ class NSE2DTorus:
 
 @dataclass(frozen=True)
 class LowModeObservation:
+    """Observe real and imaginary parts of selected low Fourier coefficients."""
+
     model: NSE2DTorus
     kmax: int
     component: str = "vorticity"
@@ -246,6 +248,8 @@ class LowModeObservation:
 
 @dataclass(frozen=True)
 class GridObservation:
+    """Observe vorticity values on a regular subsampled physical grid."""
+
     model: NSE2DTorus
     stride: int = 1
 
