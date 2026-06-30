@@ -76,6 +76,32 @@ def test_forecast_adapter_shapes_for_single_state_and_batches():
     assert batch_out.dtype == batch.dtype
 
 
+def test_as_forecast_accepts_da_model_signature():
+    model = _model(nx=8, ny=8)
+    x, y = _grid(model)
+    omega = np.sin(x) + np.cos(y)
+    flat = omega.reshape(-1)
+
+    forecast = model.as_forecast(n_steps=2)
+    out = forecast(flat, 2.0e-3)
+    expected = model.forecast_fn(dt=1.0e-3, n_steps=2)(flat)
+
+    assert out.shape == (model.state_dim,)
+    np.testing.assert_allclose(out, expected)
+
+
+def test_as_forecast_keeps_fixed_step_one_argument_use():
+    model = _model(nx=8, ny=8)
+    x, y = _grid(model)
+    flat = (np.sin(x) + np.cos(y)).reshape(-1)
+
+    forecast = model.as_forecast(dt=1.0e-3, n_steps=2)
+    out = forecast(flat)
+    expected = model.forecast_fn(dt=1.0e-3, n_steps=2)(flat)
+
+    np.testing.assert_allclose(out, expected)
+
+
 def test_observation_operators_are_deterministic_and_shape_consistent():
     model = _model(nx=8, ny=8)
     x, y = _grid(model)

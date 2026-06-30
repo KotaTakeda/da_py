@@ -184,8 +184,20 @@ class NSE2DTorus:
 
         return forecast_batch
 
-    def as_forecast(self, dt, n_steps=1):
-        return self.forecast_batch_fn(dt, n_steps=n_steps, flatten=True)
+    def as_forecast(self, dt=None, n_steps=1, flatten=True):
+        if n_steps <= 0:
+            raise ValueError("n_steps must be positive")
+
+        def forecast(x, runtime_dt=None):
+            if runtime_dt is None:
+                if dt is None:
+                    raise TypeError("runtime dt is required when no fixed dt is set")
+                step_dt = dt
+            else:
+                step_dt = runtime_dt / n_steps
+            return self.forecast_batch_fn(step_dt, n_steps=n_steps, flatten=flatten)(x)
+
+        return forecast
 
     def low_mode_observation(self, kmax, component="vorticity"):
         return LowModeObservation(self, kmax=kmax, component=component)
