@@ -1,3 +1,15 @@
+"""Minimal 2D Navier-Stokes model for da_py experiments.
+
+Usage:
+    cfg = NSE2DConfig(nx=64, ny=64, viscosity=1e-3)
+    model = NSE2DTorus(cfg)
+    omega1 = model.step(omega0, dt=0.01)
+    traj = model.solve(omega0, dt=0.01, n_steps=100)
+
+    M = model.as_forecast(n_steps=5)  # M(x_flat, dt) -> x_flat
+    obs = model.grid_observation(stride=4)
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
