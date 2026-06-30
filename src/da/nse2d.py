@@ -95,16 +95,18 @@ class NSE2DTorus:
             return self.ifft(1j * self.kx * field_hat)
         raise ValueError("axis must be 0, 1, 'y', or 'x'")
 
-    def streamfunction(self, omega):
+    def _streamfunction_hat(self, omega):
         omega_hat = self.fft(omega)
         psi_hat = omega_hat * self._inv_k2
         psi_hat[0, 0] = 0.0
+        return psi_hat
+
+    def streamfunction(self, omega):
+        psi_hat = self._streamfunction_hat(omega)
         return self.ifft(psi_hat)
 
     def velocity(self, omega):
-        omega_hat = self.fft(omega)
-        psi_hat = omega_hat * self._inv_k2
-        psi_hat[0, 0] = 0.0
+        psi_hat = self._streamfunction_hat(omega)
         u = self.ifft(1j * self.ky * psi_hat)
         v = self.ifft(-1j * self.kx * psi_hat)
         return u, v
@@ -192,11 +194,13 @@ class NSE2DTorus:
         return lambda x: self._forecast_flat(x, dt, n_steps)
 
     def forecast_batch_fn(self, dt, n_steps=1):
+        forecast_one = self.forecast_fn(dt, n_steps)
+
         def forecast(x):
             arr = np.asarray(x)
             if arr.ndim == 1:
-                return self._forecast_flat(arr, dt, n_steps)
-            return np.stack([self._forecast_flat(member, dt, n_steps) for member in arr])
+                return forecast_one(arr)
+            return np.stack([forecast_one(member) for member in arr])
 
         return forecast
 
@@ -207,7 +211,7 @@ class NSE2DTorus:
         return GridObservation(self, stride=stride)
 
 
-@dataclass(frozen=True)
+@dataclass
 class LowModeObservation:
     """Observe real and imaginary parts of selected low Fourier coefficients."""
 
@@ -223,10 +227,9 @@ class LowModeObservation:
         kx_index = np.fft.fftfreq(self.model.nx) * self.model.nx
         ky_index = np.fft.fftfreq(self.model.ny) * self.model.ny
         ix, iy = np.meshgrid(kx_index, ky_index)
-        mask = (np.abs(ix) <= self.kmax) & (np.abs(iy) <= self.kmax)
-        object.__setattr__(self, "_mask", mask)
-        object.__setattr__(self, "state_dim", self.model.state_dim)
-        object.__setattr__(self, "obs_dim", int(2 * np.count_nonzero(mask)))
+        self.mask = (np.abs(ix) <= self.kmax) & (np.abs(iy) <= self.kmax)
+        self.state_dim = self.model.state_dim
+        self.obs_dim = int(2 * np.count_nonzero(self.mask))
 
     def observe(self, state):
         omega = np.asarray(state).reshape(self.model.shape)
@@ -236,7 +239,7 @@ class LowModeObservation:
             else omega
         )
         coeffs = np.fft.fft2(field) / self.model.state_dim
-        selected = coeffs[self._mask]
+        selected = coeffs[self.mask]
         return np.concatenate([selected.real, selected.imag])
 
     def apply_flat(self, x_flat):
@@ -246,7 +249,7 @@ class LowModeObservation:
         return self.apply_flat(x_flat)
 
 
-@dataclass(frozen=True)
+@dataclass
 class GridObservation:
     """Observe vorticity values on a regular subsampled physical grid."""
 
@@ -258,8 +261,8 @@ class GridObservation:
             raise ValueError("stride must be positive")
         ny_obs = len(range(0, self.model.ny, self.stride))
         nx_obs = len(range(0, self.model.nx, self.stride))
-        object.__setattr__(self, "state_dim", self.model.state_dim)
-        object.__setattr__(self, "obs_dim", ny_obs * nx_obs)
+        self.state_dim = self.model.state_dim
+        self.obs_dim = ny_obs * nx_obs
 
     def observe(self, state):
         omega = np.asarray(state).reshape(self.model.shape)
