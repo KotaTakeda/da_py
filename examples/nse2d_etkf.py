@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 
 from da.etkf import ETKF
-from da.nse2d import NSE2DConfig, NSE2DTorus
+from da.nse2d import NSE2DTorus, inubushi_caulfield_config
 
 
 def initial_vorticity(model):
@@ -29,15 +29,16 @@ def solve_packed_spectral(model, x_hat0, dt, n_steps):
 
 
 def build_kolmogorov_model(args):
-    cfg_kwargs = {
-        "nx": args.nx,
-        "ny": args.ny,
-        "viscosity": 1.0e-3,
-        "length": 2 * np.pi,
-    }
-    base = NSE2DTorus(NSE2DConfig(**cfg_kwargs))
-    forcing = base.kolmogorov_forcing(mode=4)
-    return NSE2DTorus(NSE2DConfig(**cfg_kwargs, forcing=forcing))
+    return NSE2DTorus(
+        inubushi_caulfield_config(
+            nx=args.nx,
+            ny=args.ny,
+            viscosity=1.0e-3,
+            drag=1.0e-1,
+            forcing_mode=4,
+            length=2 * np.pi,
+        )
+    )
 
 
 def make_observations(model, truth_hat, rng, kmax_obs):

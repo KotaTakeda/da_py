@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from da.nse2d import NSE2DConfig, NSE2DTorus
+from da.nse2d import NSE2DTorus, inubushi_caulfield_config
 
 
 def initial_vorticity(model, mode):
@@ -14,7 +14,9 @@ def initial_vorticity(model, mode):
     return omega, xx, yy
 
 
-def vorticity_cmap():
+def vorticity_cmap(name):
+    if name != "icefire":
+        return name
     try:
         import seaborn as sns
 
@@ -51,15 +53,15 @@ def save_figure_safely(fig, path, *, dpi=150):
 
 
 def build_kolmogorov_model(args):
-    cfg_kwargs = {
-        "nx": args.nx,
-        "ny": args.ny,
-        "viscosity": args.viscosity,
-        "length": 2 * np.pi,
-    }
-    base_model = NSE2DTorus(NSE2DConfig(**cfg_kwargs))
-    forcing = base_model.kolmogorov_forcing(mode=args.mode)
-    return NSE2DTorus(NSE2DConfig(**cfg_kwargs, forcing=forcing))
+    cfg = inubushi_caulfield_config(
+        nx=args.nx,
+        ny=args.ny,
+        viscosity=args.viscosity,
+        drag=args.drag,
+        forcing_mode=args.mode,
+        length=2 * np.pi,
+    )
+    return NSE2DTorus(cfg)
 
 
 def solve_trajectory(model, omega0, args):
@@ -70,7 +72,15 @@ def solve_trajectory(model, omega0, args):
     return traj, times
 
 
-def plot_vorticity_panels(traj, times, length, *, ncols=4):
+def plot_vorticity_panels(
+    traj,
+    times,
+    length,
+    *,
+    cmap_name="icefire",
+    interpolation="nearest",
+    ncols=4,
+):
     import matplotlib.pyplot as plt
 
     if len(traj) == 0:
@@ -83,7 +93,7 @@ def plot_vorticity_panels(traj, times, length, *, ncols=4):
         figsize=(3.1 * ncols, 3.15 * nrows),
     )
     axes = np.atleast_1d(axes).reshape(-1)
-    cmap = vorticity_cmap()
+    cmap = vorticity_cmap(cmap_name)
 
     im = None
     for ax, omega, time in zip(axes, traj, times, strict=False):
@@ -94,7 +104,7 @@ def plot_vorticity_panels(traj, times, length, *, ncols=4):
             cmap=cmap,
             vmin=-vlim,
             vmax=vlim,
-            interpolation="nearest",
+            interpolation=interpolation,
         )
         ax.set_title(f"t={time:.3f}", fontweight="bold")
         ax.set_xlabel("x")
@@ -125,17 +135,24 @@ def plot_vorticity_panels(traj, times, length, *, ncols=4):
 def diagnostics(model, traj):
     energies = np.array([model.energy(omega) for omega in traj])
     enstrophies = np.array([model.enstrophy(omega) for omega in traj])
-    return energies, enstrophies
+    palinstrophies = np.array([model.palinstrophy(omega) for omega in traj])
+    return energies, enstrophies, palinstrophies
 
 
-def plot_diagnostics(times, energies, enstrophies):
+def plot_diagnostics(times, energies, enstrophies, palinstrophies):
     import matplotlib.pyplot as plt
 
-    if energies[0] == 0.0 or enstrophies[0] == 0.0:
-        raise ValueError("initial energy and enstrophy must be nonzero")
+    if energies[0] == 0.0 or enstrophies[0] == 0.0 or palinstrophies[0] == 0.0:
+        raise ValueError("initial diagnostics must be nonzero")
     fig, ax = plt.subplots(figsize=(5.0, 3.5))
     ax.plot(times, energies / energies[0], marker="o", label="energy")
     ax.plot(times, enstrophies / enstrophies[0], marker="o", label="enstrophy")
+    ax.plot(
+        times,
+        palinstrophies / palinstrophies[0],
+        marker="o",
+        label="palinstrophy",
+    )
     ax.set_xlabel("time")
     ax.set_ylabel("normalized value")
     ax.legend()
@@ -144,11 +161,28 @@ def plot_diagnostics(times, energies, enstrophies):
     return fig
 
 
-def save_plots(output_dir, model, traj, times, energies, enstrophies):
+def save_plots(
+    output_dir,
+    model,
+    traj,
+    times,
+    energies,
+    enstrophies,
+    palinstrophies,
+    *,
+    cmap_name,
+    interpolation,
+):
     output_dir = Path(output_dir)
-    fig = plot_vorticity_panels(traj, times, model.config.length)
+    fig = plot_vorticity_panels(
+        traj,
+        times,
+        model.config.length,
+        cmap_name=cmap_name,
+        interpolation=interpolation,
+    )
     save_figure_safely(fig, output_dir / "vorticity_panels.png")
-    fig = plot_diagnostics(times, energies, enstrophies)
+    fig = plot_diagnostics(times, energies, enstrophies, palinstrophies)
     save_figure_safely(fig, output_dir / "diagnostics.png")
 
 
@@ -163,6 +197,13 @@ def parse_args():
     parser.add_argument("--n-panels", type=int, default=11)
     parser.add_argument("--mode", type=int, default=4)
     parser.add_argument("--viscosity", type=float, default=1.0e-3)
+    parser.add_argument("--drag", type=float, default=1.0e-1)
+    parser.add_argument("--cmap", default="icefire")
+    parser.add_argument(
+        "--interpolation",
+        choices=["nearest", "none", "bilinear"],
+        default="nearest",
+    )
     return parser.parse_args()
 
 
@@ -172,12 +213,14 @@ def main():
     omega0, xx, yy = initial_vorticity(model, mode=args.mode)
 
     traj, times = solve_trajectory(model, omega0, args)
-    energies, enstrophies = diagnostics(model, traj)
+    energies, enstrophies, palinstrophies = diagnostics(model, traj)
     print("trajectory shape:", traj.shape)
     print("viscosity:", args.viscosity)
+    print("drag:", args.drag)
     print("final time:", float(times[-1]))
     print("initial energy/enstrophy:", energies[0], enstrophies[0])
     print("final energy/enstrophy:", energies[-1], enstrophies[-1])
+    print("initial/final palinstrophy:", palinstrophies[0], palinstrophies[-1])
 
     low_obs = model.low_mode_observation(kmax=2)
     grid_obs = model.grid_observation(stride=4)
@@ -204,7 +247,17 @@ def main():
 
     try:
         output_dir = Path("data/nse2d_torus_forecast")
-        save_plots(output_dir, model, traj, times, energies, enstrophies)
+        save_plots(
+            output_dir,
+            model,
+            traj,
+            times,
+            energies,
+            enstrophies,
+            palinstrophies,
+            cmap_name=args.cmap,
+            interpolation=args.interpolation,
+        )
         print("saved figures to:", output_dir)
     except ModuleNotFoundError as exc:
         if exc.name != "matplotlib":

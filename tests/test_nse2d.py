@@ -4,17 +4,35 @@ import sys
 import numpy as np
 import pytest
 
-from da.nse2d import NSE2DConfig, NSE2DTorus
+from da.nse2d import NSE2DConfig, NSE2DTorus, inubushi_caulfield_config
 
 
-def _model(nx=16, ny=16, viscosity=1.0e-2, length=2 * np.pi):
-    return NSE2DTorus(NSE2DConfig(nx=nx, ny=ny, viscosity=viscosity, length=length))
+def _model(nx=16, ny=16, viscosity=1.0e-2, drag=0.0, length=2 * np.pi):
+    return NSE2DTorus(
+        NSE2DConfig(
+            nx=nx,
+            ny=ny,
+            viscosity=viscosity,
+            drag=drag,
+            length=length,
+        )
+    )
 
 
 def _grid(model):
     x = np.linspace(0.0, model.config.length, model.nx, endpoint=False)
     y = np.linspace(0.0, model.config.length, model.ny, endpoint=False)
     return np.meshgrid(x, y)
+
+
+def test_config_positional_arguments_keep_existing_meaning():
+    cfg = NSE2DConfig(10, 12, 2.0e-2, 3.0)
+
+    assert cfg.nx == 10
+    assert cfg.ny == 12
+    assert cfg.viscosity == 2.0e-2
+    assert cfg.length == 3.0
+    assert cfg.drag == 0.0
 
 
 def test_spectral_derivative_consistency():
@@ -94,15 +112,36 @@ def test_radial_spectrum_rejects_unknown_quantity():
         model.radial_spectrum(np.zeros(model.shape), quantity="vorticity")
 
 
+def test_zero_drag_preserves_rhs_behavior():
+    x, y = _grid(_model())
+    omega = np.sin(x) + np.cos(2 * y)
+    no_drag = _model(nx=16, ny=16, viscosity=1.0e-2, drag=0.0)
+    default_drag = NSE2DTorus(
+        NSE2DConfig(nx=16, ny=16, viscosity=1.0e-2, length=2 * np.pi)
+    )
+
+    np.testing.assert_allclose(no_drag.rhs(omega), default_drag.rhs(omega))
+
+
+def test_drag_decreases_enstrophy_in_unforced_run():
+    model = _model(nx=16, ny=16, viscosity=0.0, drag=0.2)
+    x, y = _grid(model)
+    omega0 = np.sin(x) + 0.5 * np.cos(2 * y)
+    omega1 = model.solve(omega0, dt=1.0e-2, n_steps=5)[-1]
+
+    assert model.enstrophy(omega1) < model.enstrophy(omega0)
+
+
 def test_kolmogorov_flow_is_steady_with_matching_forcing():
     length = 3.0
-    base = _model(nx=16, ny=16, viscosity=1.0e-2, length=length)
+    base = _model(nx=16, ny=16, viscosity=1.0e-2, drag=0.3, length=length)
     forcing = base.kolmogorov_forcing(mode=2, amplitude=1.5)
     model = NSE2DTorus(
         NSE2DConfig(
             nx=16,
             ny=16,
             viscosity=1.0e-2,
+            drag=0.3,
             length=length,
             forcing=forcing,
         )
@@ -116,6 +155,29 @@ def test_kolmogorov_flow_is_steady_with_matching_forcing():
     np.testing.assert_allclose(v, expected_v, atol=1.0e-12)
 
 
+def test_kolmogorov_vorticity_forcing_shape_mean_and_values():
+    model = _model(nx=16, ny=16, length=2 * np.pi)
+    _, y = _grid(model)
+    forcing = model.kolmogorov_vorticity_forcing(mode=4, amplitude=2.0)
+
+    assert forcing.shape == model.shape
+    np.testing.assert_allclose(np.mean(forcing), 0.0, atol=1.0e-14)
+    np.testing.assert_allclose(forcing, -8.0 * np.cos(4 * y), atol=1.0e-14)
+
+
+def test_inubushi_caulfield_config_uses_forced_damped_reference_parameters():
+    cfg = inubushi_caulfield_config(nx=16, ny=16)
+    model = NSE2DTorus(cfg)
+
+    assert cfg.viscosity == 1.0e-3
+    assert cfg.drag == 1.0e-1
+    assert cfg.forcing is not None
+    np.testing.assert_allclose(
+        cfg.forcing,
+        model.kolmogorov_vorticity_forcing(mode=4),
+    )
+
+
 def test_kolmogorov_mode_must_be_positive():
     model = _model()
 
@@ -123,9 +185,22 @@ def test_kolmogorov_mode_must_be_positive():
         model.kolmogorov_velocity,
         model.kolmogorov_vorticity,
         model.kolmogorov_forcing,
+        model.kolmogorov_vorticity_forcing,
     ):
         with pytest.raises(ValueError, match="mode must be positive"):
             method(mode=0)
+
+
+def test_palinstrophy_matches_analytic_gradient_norm():
+    model = _model()
+    x, y = _grid(model)
+    omega = np.sin(2 * x) * np.cos(3 * y)
+    expected = 0.5 * np.mean(
+        (2 * np.cos(2 * x) * np.cos(3 * y)) ** 2
+        + (-3 * np.sin(2 * x) * np.sin(3 * y)) ** 2
+    )
+
+    np.testing.assert_allclose(model.palinstrophy(omega), expected, atol=1.0e-12)
 
 
 def test_forecast_adapter_shapes_for_single_state_and_batches():
