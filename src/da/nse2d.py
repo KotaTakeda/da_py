@@ -229,14 +229,26 @@ class NSE2DTorus:
 
         return forecast
 
-    def low_mode_observation(self, kmax, component="vorticity"):
-        return LowModeObservation(self, kmax=kmax, component=component)
+    def low_mode_observation(self, kmax, component="vorticity", *, linear=False):
+        obs = LowModeObservation(self, kmax=kmax, component=component)
+        return obs.as_matrix() if linear else obs
 
-    def independent_low_mode_observation(self, kmax):
-        return IndependentLowModeObservation(self, kmax=kmax)
+    def independent_low_mode_observation(self, kmax, *, linear=False):
+        obs = IndependentLowModeObservation(self, kmax=kmax)
+        return obs.as_matrix() if linear else obs
 
-    def grid_observation(self, stride=1):
-        return GridObservation(self, stride=stride)
+    def grid_observation(self, stride=1, *, linear=False):
+        obs = GridObservation(self, stride=stride)
+        return obs.as_matrix() if linear else obs
+
+
+def _dense_observation_matrix(obs):
+    matrix = np.empty((obs.obs_dim, obs.state_dim))
+    for i in range(obs.state_dim):
+        basis = np.zeros(obs.state_dim)
+        basis[i] = 1.0
+        matrix[:, i] = obs.apply_flat(basis)
+    return matrix
 
 
 @dataclass
@@ -275,6 +287,9 @@ class LowModeObservation:
 
     def matrix_free_apply(self, x_flat):
         return self.apply_flat(x_flat)
+
+    def as_matrix(self):
+        return _dense_observation_matrix(self)
 
 
 @dataclass
@@ -331,6 +346,9 @@ class IndependentLowModeObservation:
     def apply_spectral_flat(self, x_hat_flat):
         return self.observe_spectral(np.asarray(x_hat_flat).reshape(self.spectral_shape))
 
+    def as_matrix(self):
+        return _dense_observation_matrix(self)
+
 
 @dataclass
 class GridObservation:
@@ -353,3 +371,12 @@ class GridObservation:
 
     def apply_flat(self, x_flat):
         return self.observe(np.asarray(x_flat).reshape(self.model.shape))
+
+    def as_matrix(self):
+        matrix = np.zeros((self.obs_dim, self.state_dim))
+        rows = np.arange(self.obs_dim)
+        cols = np.arange(self.state_dim).reshape(self.model.shape)[
+            :: self.stride, :: self.stride
+        ].reshape(-1)
+        matrix[rows, cols] = 1.0
+        return matrix

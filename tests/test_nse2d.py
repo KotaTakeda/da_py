@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 import numpy as np
 
 from da.nse2d import NSE2DConfig, NSE2DTorus
@@ -120,6 +123,28 @@ def test_observation_operators_are_deterministic_and_shape_consistent():
     np.testing.assert_allclose(g1, g2)
 
 
+def test_observation_matrices_match_matrix_free_apply():
+    model = _model(nx=8, ny=8)
+    x, y = _grid(model)
+    omega = np.sin(x) + np.cos(2 * y)
+    flat = omega.reshape(-1)
+
+    grid = model.grid_observation(stride=2)
+    H_grid = grid.as_matrix()
+    np.testing.assert_allclose(H_grid @ flat, grid.apply_flat(flat))
+    np.testing.assert_allclose(model.grid_observation(stride=2, linear=True), H_grid)
+
+    low = model.low_mode_observation(kmax=1)
+    np.testing.assert_allclose(low.as_matrix() @ flat, low.apply_flat(flat), atol=1e-14)
+
+    independent = model.independent_low_mode_observation(kmax=1)
+    np.testing.assert_allclose(
+        independent.as_matrix() @ flat,
+        independent.apply_flat(flat),
+        atol=1e-14,
+    )
+
+
 def test_independent_low_mode_observation_uses_minimal_real_coefficients():
     model = _model(nx=8, ny=8)
     x, y = _grid(model)
@@ -155,3 +180,15 @@ def test_short_trajectory_is_reproducible():
     traj1 = model.solve(omega, dt=1.0e-3, n_steps=3)
     traj2 = model.solve(omega, dt=1.0e-3, n_steps=3)
     np.testing.assert_allclose(traj1, traj2, rtol=0.0, atol=0.0)
+
+
+def test_nse2d_etkf_example_smoke():
+    result = subprocess.run(
+        [sys.executable, "examples/nse2d_etkf.py"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "final analysis RMSE:" in result.stdout
+    assert "linear observation matrix: True" in result.stdout
