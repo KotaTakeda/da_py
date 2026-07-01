@@ -63,6 +63,37 @@ def test_unforced_viscous_dynamics_decay_energy_and_enstrophy():
     assert model.enstrophy(omega1) < model.enstrophy(omega0)
 
 
+def test_radial_spectra_sum_to_energy_and_enstrophy():
+    model = _model(nx=16, ny=16)
+    x, y = _grid(model)
+    omega = np.sin(2 * x) * np.cos(3 * y) + 0.2 * np.cos(x - y)
+
+    _, energy_spectrum = model.radial_spectrum(omega, quantity="energy")
+    _, enstrophy_spectrum = model.radial_spectrum(omega, quantity="enstrophy")
+
+    np.testing.assert_allclose(np.sum(energy_spectrum), model.energy(omega), atol=1e-14)
+    np.testing.assert_allclose(
+        np.sum(enstrophy_spectrum),
+        model.enstrophy(omega),
+        atol=1e-14,
+    )
+
+
+def test_spectral_tail_fraction_detects_low_mode_fields():
+    model = _model(nx=16, ny=16)
+    x, y = _grid(model)
+    omega = np.sin(x) + np.cos(2 * y)
+
+    assert model.spectral_tail_fraction(omega, cutoff=3, quantity="enstrophy") < 1e-28
+    assert model.spectral_tail_fraction(omega, cutoff=3, quantity="energy") < 1e-28
+
+
+def test_radial_spectrum_rejects_unknown_quantity():
+    model = _model()
+    with pytest.raises(ValueError, match="quantity must be"):
+        model.radial_spectrum(np.zeros(model.shape), quantity="vorticity")
+
+
 def test_kolmogorov_flow_is_steady_with_matching_forcing():
     length = 3.0
     base = _model(nx=16, ny=16, viscosity=1.0e-2, length=length)
@@ -244,6 +275,85 @@ def test_short_trajectory_is_reproducible():
     traj1 = model.solve(omega, dt=1.0e-3, n_steps=3)
     traj2 = model.solve(omega, dt=1.0e-3, n_steps=3)
     np.testing.assert_allclose(traj1, traj2, rtol=0.0, atol=0.0)
+
+
+def test_dealias_pad_fft_roundtrip_preserves_resolved_coefficients():
+    model = NSE2DTorus(NSE2DConfig(nx=8, ny=8, dealias="pad"))
+    x, y = _grid(model)
+    omega = np.sin(2 * x) * np.cos(3 * y) + 0.25 * np.cos(x - y)
+    omega_hat = model.fft(omega)
+
+    np.testing.assert_allclose(
+        model._truncate_fft(model._pad_fft(omega_hat)),
+        omega_hat,
+        atol=1e-12,
+    )
+
+
+def test_dealias_pad_fft_aligns_modes_on_odd_grids():
+    model = NSE2DTorus(NSE2DConfig(nx=7, ny=7, dealias="pad"))
+    omega_hat = np.zeros(model.shape, dtype=complex)
+    omega_hat[0, 0] = 1.0
+    omega_hat[4, 2] = 2.0 + 3.0j  # integer mode (kx, ky) = (2, -3)
+
+    padded = model._pad_fft(omega_hat)
+    pad_kx = np.rint(
+        np.fft.fftfreq(model._pad_shape[1]) * model._pad_shape[1]
+    ).astype(int)
+    pad_ky = np.rint(
+        np.fft.fftfreq(model._pad_shape[0]) * model._pad_shape[0]
+    ).astype(int)
+    zero_y = int(np.flatnonzero(pad_ky == 0)[0])
+    zero_x = int(np.flatnonzero(pad_kx == 0)[0])
+    mode_y = int(np.flatnonzero(pad_ky == -3)[0])
+    mode_x = int(np.flatnonzero(pad_kx == 2)[0])
+
+    assert padded[zero_y, zero_x] == model._pad_scale
+    assert padded[mode_y, mode_x] == (2.0 + 3.0j) * model._pad_scale
+    np.testing.assert_allclose(
+        model._truncate_fft(padded),
+        omega_hat,
+        atol=1e-12,
+    )
+
+
+def test_dealias_pad_fft_zeros_even_grid_nyquist_modes():
+    model = NSE2DTorus(NSE2DConfig(nx=8, ny=8, dealias="pad"))
+    omega_hat = np.zeros(model.shape, dtype=complex)
+    omega_hat[0, 0] = 1.0
+    omega_hat[1, 2] = 2.0 + 3.0j
+    omega_hat[7, 6] = 2.0 - 3.0j
+    omega_hat[0, model.nx // 2] = 4.0
+    omega_hat[model.ny // 2, 0] = 5.0
+    omega_hat[model.ny // 2, model.nx // 2] = 6.0
+
+    padded = model._pad_fft(omega_hat)
+    padded_field = np.fft.ifft2(padded)
+    truncated = model._truncate_fft(padded)
+
+    assert np.max(np.abs(padded_field.imag)) < 1e-14
+    assert truncated[0, model.nx // 2] == 0.0
+    assert truncated[model.ny // 2, 0] == 0.0
+    assert truncated[model.ny // 2, model.nx // 2] == 0.0
+    assert truncated[0, 0] == omega_hat[0, 0]
+    assert truncated[1, 2] == omega_hat[1, 2]
+    assert truncated[7, 6] == omega_hat[7, 6]
+
+
+def test_dealias_pad_short_trajectory_is_finite():
+    model = NSE2DTorus(NSE2DConfig(nx=8, ny=8, viscosity=1.0e-2, dealias="pad"))
+    x, y = _grid(model)
+    omega = np.sin(x + y) + 0.2 * np.cos(2 * x - y)
+
+    traj = model.solve(omega, dt=1.0e-3, n_steps=3)
+
+    assert traj.shape == (4, model.ny, model.nx)
+    assert np.all(np.isfinite(traj))
+
+
+def test_dealias_option_is_validated():
+    with pytest.raises(ValueError, match="dealias must be"):
+        NSE2DConfig(dealias="unknown")
 
 
 def test_nse2d_etkf_example_smoke():
