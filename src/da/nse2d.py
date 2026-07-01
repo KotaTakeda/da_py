@@ -55,6 +55,12 @@ class NSE2DTorus:
         self.ny = config.ny
         self.shape = (self.ny, self.nx)
         self.state_dim = self.nx * self.ny
+        self.spectral_shape = (self.ny, self.nx // 2 + 1)
+        self._spectral_indices, self._spectral_real_only = _independent_rfft_indices(
+            self.nx,
+            self.ny,
+        )
+        self.spectral_state_dim = _real_vector_dim(self._spectral_real_only)
         self.dx = config.length / self.nx
         self.dy = config.length / self.ny
 
@@ -81,6 +87,46 @@ class NSE2DTorus:
             raise ValueError(f"expected state shape {self.shape}, got {arr.shape}")
         return arr
 
+    def grid(self):
+        x = np.linspace(0.0, self.config.length, self.nx, endpoint=False)
+        y = np.linspace(0.0, self.config.length, self.ny, endpoint=False)
+        return np.meshgrid(x, y)
+
+    def _kolmogorov_wavenumber(self, mode):
+        if mode <= 0:
+            raise ValueError("mode must be positive")
+        return 2 * np.pi * mode / self.config.length
+
+    def kolmogorov_velocity(self, mode=4, amplitude=1.0):
+        """Return the Kolmogorov velocity ``u=A sin(k y), v=0``."""
+        _, y = self.grid()
+        wavenumber = self._kolmogorov_wavenumber(mode)
+        u = amplitude * np.sin(wavenumber * y)
+        v = np.zeros_like(u)
+        return u, v
+
+    def kolmogorov_vorticity(self, mode=4, amplitude=1.0):
+        """Return vorticity ``omega=-A k cos(k y)`` of Kolmogorov flow."""
+        _, y = self.grid()
+        wavenumber = self._kolmogorov_wavenumber(mode)
+        return -amplitude * wavenumber * np.cos(wavenumber * y)
+
+    def kolmogorov_forcing(self, mode=4, amplitude=1.0):
+        """Return vorticity forcing making Kolmogorov flow steady.
+
+        For ``u=A sin(k y), v=0`` and ``omega=-A k cos(k y)``, the advection
+        term vanishes and the steady vorticity equation requires
+        ``forcing = -nu * Laplacian(omega) = -nu * A * k**3 * cos(k y)``.
+        """
+        _, y = self.grid()
+        wavenumber = self._kolmogorov_wavenumber(mode)
+        return (
+            -self.config.viscosity
+            * amplitude
+            * wavenumber**3
+            * np.cos(wavenumber * y)
+        )
+
     def fft(self, field):
         return np.fft.fft2(self._as_state(field))
 
@@ -92,6 +138,57 @@ class NSE2DTorus:
 
     def irfft(self, field_hat):
         return np.fft.irfft2(field_hat, s=self.shape)
+
+    def pack_spectral_state(self, omega_hat):
+        """Pack independent rfft2 vorticity coefficients into a real vector."""
+        coeffs = np.asarray(omega_hat).reshape(self.spectral_shape)
+        values = []
+        for index, real_only in zip(
+            self._spectral_indices,
+            self._spectral_real_only,
+            strict=False,
+        ):
+            coeff = coeffs[index]
+            values.append(coeff.real)
+            if not real_only:
+                values.append(coeff.imag)
+        return np.asarray(values, dtype=float)
+
+    def unpack_spectral_state(self, x_hat):
+        """Unpack a real vector into an rfft2 array satisfying Hermitian symmetry."""
+        values = np.asarray(x_hat, dtype=float)
+        if values.shape != (self.spectral_state_dim,):
+            raise ValueError(
+                f"expected spectral state shape {(self.spectral_state_dim,)}, "
+                f"got {values.shape}"
+            )
+        coeffs = np.zeros(self.spectral_shape, dtype=complex)
+        cursor = 0
+        for (iy, ix), real_only in zip(
+            self._spectral_indices,
+            self._spectral_real_only,
+            strict=False,
+        ):
+            if real_only:
+                coeff = values[cursor] + 0.0j
+                cursor += 1
+            else:
+                coeff = values[cursor] + 1j * values[cursor + 1]
+                cursor += 2
+            coeffs[iy, ix] = coeff
+            self_conjugate_x = ix == 0 or (self.nx % 2 == 0 and ix == self.nx // 2)
+            self_conjugate_y = iy == 0 or (self.ny % 2 == 0 and iy == self.ny // 2)
+            if self_conjugate_x and not self_conjugate_y:
+                coeffs[-iy % self.ny, ix] = np.conj(coeff)
+        return coeffs
+
+    def to_spectral_state(self, omega):
+        """Convert real-space vorticity to the packed spectral state vector."""
+        return self.pack_spectral_state(self.rfft(omega))
+
+    def from_spectral_state(self, x_hat):
+        """Convert a packed spectral state vector to real-space vorticity."""
+        return self.irfft(self.unpack_spectral_state(x_hat))
 
     def derivative(self, field, axis):
         field_hat = self.fft(field)
@@ -159,6 +256,11 @@ class NSE2DTorus:
         omega = self.irfft(omega_hat)
         return self.rfft(self.step(omega, dt))
 
+    def step_spectral_state(self, x_hat, dt):
+        """Advance one packed spectral vorticity state by one time step."""
+        omega_hat = self.unpack_spectral_state(x_hat)
+        return self.pack_spectral_state(self.step_spectral(omega_hat, dt))
+
     def solve_spectral(self, omega_hat0, dt, n_steps, *, store_every=1):
         """Integrate a trajectory whose public state is rfft2 vorticity."""
         if n_steps < 0:
@@ -215,6 +317,20 @@ class NSE2DTorus:
 
         return forecast
 
+    def as_spectral_forecast(self, internal_steps=1):
+        """Return ``M(x_hat, dt) -> x_hat`` for packed spectral states."""
+        if internal_steps <= 0:
+            raise ValueError("internal_steps must be positive")
+
+        def forecast(x_hat, dt):
+            arr = np.asarray(x_hat)
+            state = arr.astype(np.result_type(arr.dtype, np.float64), copy=False)
+            for _ in range(internal_steps):
+                state = self.step_spectral_state(state, dt / internal_steps)
+            return state.astype(arr.dtype, copy=False)
+
+        return forecast
+
     def forecast_fn(self, dt, n_steps=1):
         return lambda x: self._forecast_flat(x, dt, n_steps)
 
@@ -237,6 +353,10 @@ class NSE2DTorus:
         obs = IndependentLowModeObservation(self, kmax=kmax)
         return obs.as_matrix() if linear else obs
 
+    def spectral_low_mode_observation(self, kmax, *, linear=False):
+        obs = SpectralLowModeObservation(self, kmax=kmax)
+        return obs.as_matrix() if linear else obs
+
     def grid_observation(self, stride=1, *, linear=False):
         obs = GridObservation(self, stride=stride)
         return obs.as_matrix() if linear else obs
@@ -249,6 +369,40 @@ def _dense_observation_matrix(obs):
         basis[i] = 1.0
         matrix[:, i] = obs.apply_flat(basis)
     return matrix
+
+
+def _real_vector_dim(real_only):
+    return sum(1 if is_real else 2 for is_real in real_only)
+
+
+def _packed_positions(indices, real_only):
+    positions = {}
+    start = 0
+    for index, is_real in zip(indices, real_only, strict=False):
+        positions[index] = start
+        start += 1 if is_real else 2
+    return positions
+
+
+def _independent_rfft_indices(nx, ny, kmax=None):
+    indices = []
+    real_only = []
+    ky_index = np.fft.fftfreq(ny) * ny
+    kx_index = np.fft.rfftfreq(nx) * nx
+    for iy, ky in enumerate(ky_index):
+        for ix, kx in enumerate(kx_index):
+            if kmax is not None and (abs(kx) > kmax or abs(ky) > kmax):
+                continue
+            y_nyquist = ny % 2 == 0 and iy == ny // 2
+            if ix == 0 and ky < 0 and not y_nyquist:
+                continue
+            if nx % 2 == 0 and ix == nx // 2 and ky < 0 and not y_nyquist:
+                continue
+            self_conjugate_x = ix == 0 or (nx % 2 == 0 and ix == nx // 2)
+            self_conjugate_y = iy == 0 or (ny % 2 == 0 and iy == ny // 2)
+            indices.append((iy, ix))
+            real_only.append(self_conjugate_x and self_conjugate_y)
+    return indices, real_only
 
 
 @dataclass
@@ -302,30 +456,14 @@ class IndependentLowModeObservation:
     def __post_init__(self):
         if self.kmax < 0:
             raise ValueError("kmax must be non-negative")
-        self.indices = []
-        self.real_only = []
-        ky_index = np.fft.fftfreq(self.model.ny) * self.model.ny
-        kx_index = np.fft.rfftfreq(self.model.nx) * self.model.nx
-        for iy, ky in enumerate(ky_index):
-            for ix, kx in enumerate(kx_index):
-                if abs(kx) > self.kmax or abs(ky) > self.kmax:
-                    continue
-                if ix == 0 and ky < 0:
-                    continue
-                if self.model.nx % 2 == 0 and ix == self.model.nx // 2 and ky < 0:
-                    continue
-                self_conjugate_x = ix == 0 or (
-                    self.model.nx % 2 == 0 and ix == self.model.nx // 2
-                )
-                self_conjugate_y = iy == 0 or (
-                    self.model.ny % 2 == 0 and iy == self.model.ny // 2
-                )
-                is_real = self_conjugate_x and self_conjugate_y
-                self.indices.append((iy, ix))
-                self.real_only.append(is_real)
+        self.indices, self.real_only = _independent_rfft_indices(
+            self.model.nx,
+            self.model.ny,
+            self.kmax,
+        )
         self.state_dim = self.model.state_dim
-        self.spectral_shape = (self.model.ny, self.model.nx // 2 + 1)
-        self.obs_dim = sum(1 if real else 2 for real in self.real_only)
+        self.spectral_shape = self.model.spectral_shape
+        self.obs_dim = _real_vector_dim(self.real_only)
 
     def observe_spectral(self, omega_hat):
         coeffs = np.asarray(omega_hat).reshape(self.spectral_shape)
@@ -348,6 +486,79 @@ class IndependentLowModeObservation:
 
     def as_matrix(self):
         return _dense_observation_matrix(self)
+
+
+@dataclass
+class SpectralLowModeObservation:
+    """Observe low modes from a packed spectral vorticity state.
+
+    The state and observation are both real vectors of independent rfft2
+    coefficients.  The coefficients are unnormalized Fourier coefficients,
+    matching ``numpy.fft.rfft2`` and ``NSE2DTorus.pack_spectral_state``.
+    """
+
+    model: NSE2DTorus
+    kmax: int
+
+    def __post_init__(self):
+        if self.kmax < 0:
+            raise ValueError("kmax must be non-negative")
+        self.indices, self.real_only = _independent_rfft_indices(
+            self.model.nx,
+            self.model.ny,
+            self.kmax,
+        )
+        self.state_dim = self.model.spectral_state_dim
+        self.obs_dim = _real_vector_dim(self.real_only)
+        self._selection = self._make_selection()
+
+    def _make_selection(self):
+        positions = _packed_positions(
+            self.model._spectral_indices,
+            self.model._spectral_real_only,
+        )
+        selection = []
+        for index, real_only in zip(self.indices, self.real_only, strict=False):
+            start = positions[index]
+            selection.append(start)
+            if not real_only:
+                selection.append(start + 1)
+        return np.asarray(selection, dtype=int)
+
+    def observe(self, x_hat):
+        values = np.asarray(x_hat, dtype=float)
+        if values.shape != (self.state_dim,):
+            raise ValueError(f"expected state shape {(self.state_dim,)}, got {values.shape}")
+        return values[self._selection].copy()
+
+    def apply_flat(self, x_hat):
+        return self.observe(x_hat)
+
+    def as_matrix(self):
+        matrix = np.zeros((self.obs_dim, self.state_dim))
+        matrix[np.arange(self.obs_dim), self._selection] = 1.0
+        return matrix
+
+    def to_spectral_state(self, y_obs):
+        values = np.asarray(y_obs, dtype=float)
+        if values.shape != (self.obs_dim,):
+            raise ValueError(f"expected observation shape {(self.obs_dim,)}, got {values.shape}")
+        x_hat = np.zeros(self.state_dim)
+        x_hat[self._selection] = values
+        return x_hat
+
+    def observation_variances(self, sigma0, decay_power=1.0):
+        """Diagonal R entries with sigma(k)=sigma0/(1+|k|^2)^(decay_power/2)."""
+        variances = []
+        ky_index = np.fft.fftfreq(self.model.ny) * self.model.ny
+        kx_index = np.fft.rfftfreq(self.model.nx) * self.model.nx
+        for (iy, ix), real_only in zip(self.indices, self.real_only, strict=False):
+            k2 = kx_index[ix] ** 2 + ky_index[iy] ** 2
+            sigma = sigma0 / (1.0 + k2) ** (0.5 * decay_power)
+            variances.append(sigma**2)
+            if not real_only:
+                variances.append(sigma**2)
+        return np.asarray(variances)
 
 
 @dataclass

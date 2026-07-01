@@ -1,4 +1,6 @@
-from pathlib import Path
+"""API smoke test for NSE2D spectral-state ETKF assimilation."""
+
+import argparse
 
 import numpy as np
 
@@ -7,10 +9,9 @@ from da.nse2d import NSE2DConfig, NSE2DTorus
 
 
 def initial_vorticity(model):
-    x = np.linspace(0.0, model.config.length, model.nx, endpoint=False)
-    y = np.linspace(0.0, model.config.length, model.ny, endpoint=False)
-    xx, yy = np.meshgrid(x, y)
-    omega = np.sin(xx) * np.cos(yy) + 0.25 * np.cos(2 * yy)
+    xx, yy = model.grid()
+    omega = model.kolmogorov_vorticity(mode=4)
+    omega += 0.1 * np.sin(xx + yy) + 0.1 * np.cos(2 * xx - yy)
     return omega
 
 
@@ -18,123 +19,87 @@ def rmse(x, x_ref):
     return float(np.sqrt(np.mean((x - x_ref) ** 2)))
 
 
-def plot_rmse(times, analysis_rmse, obs_rmse):
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots(figsize=(5.0, 3.5), constrained_layout=True)
-    ax.plot(times, analysis_rmse, marker="o", label="analysis")
-    ax.plot(times, obs_rmse, marker="o", label="observation")
-    ax.set_xlabel("time")
-    ax.set_ylabel("RMSE")
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-    return fig
+def solve_packed_spectral(model, x_hat0, dt, n_steps):
+    x_hat = np.asarray(x_hat0, dtype=float).copy()
+    out = [x_hat.copy()]
+    for _ in range(n_steps):
+        x_hat = model.step_spectral_state(x_hat, dt)
+        out.append(x_hat.copy())
+    return np.stack(out, axis=0)
 
 
-def plot_final_vorticity(model, truth, analysis):
-    import matplotlib.pyplot as plt
+def build_kolmogorov_model(args):
+    cfg_kwargs = {
+        "nx": args.nx,
+        "ny": args.ny,
+        "viscosity": 1.0e-3,
+        "length": 2 * np.pi,
+    }
+    base = NSE2DTorus(NSE2DConfig(**cfg_kwargs))
+    forcing = base.kolmogorov_forcing(mode=4)
+    return NSE2DTorus(NSE2DConfig(**cfg_kwargs, forcing=forcing))
 
-    error = analysis - truth
-    fields = [truth, analysis, error]
-    titles = ["truth", "analysis mean", "analysis error"]
-    vorticity_limit = float(np.max(np.abs([truth, analysis])))
-    error_limit = float(np.max(np.abs(error)))
 
-    fig, axes = plt.subplots(1, 3, figsize=(9.0, 3.0), constrained_layout=True)
-    for ax, field, title in zip(axes, fields, titles, strict=False):
-        limit = error_limit if title == "analysis error" else vorticity_limit
-        im = ax.imshow(
-            field,
-            extent=[0.0, model.config.length, 0.0, model.config.length],
-            origin="lower",
-            cmap="RdBu_r",
-            vmin=-limit,
-            vmax=limit,
-            interpolation="bicubic",
-        )
-        ax.set_title(title)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_aspect("equal")
-        fig.colorbar(im, ax=ax, shrink=0.8)
-    return fig
+def make_observations(model, truth_hat, rng, kmax_obs):
+    obs = model.spectral_low_mode_observation(kmax=kmax_obs)
+    H = obs.as_matrix()
+    obs_var = obs.observation_variances(sigma0=0.5, decay_power=1.0)
+    R = np.diag(obs_var)
+    y = np.stack([H @ x_hat for x_hat in truth_hat])
+    y += rng.multivariate_normal(np.zeros(obs.obs_dim), R, size=len(y))
+    return obs, H, R, y
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Small API smoke test for NSE2D + spectral ETKF.",
+    )
+    parser.add_argument("--nx", type=int, default=16)
+    parser.add_argument("--ny", type=int, default=16)
+    parser.add_argument("--kmax-obs", type=int, default=2)
+    parser.add_argument("--ensemble-size", type=int, default=8)
+    parser.add_argument("--n-cycles", type=int, default=3)
+    return parser.parse_args()
 
 
 def main():
+    args = parse_args()
     rng = np.random.default_rng(7)
-    cfg = NSE2DConfig(nx=16, ny=16, viscosity=1.0e-3, length=2 * np.pi)
-    model = NSE2DTorus(cfg)
 
+    model = build_kolmogorov_model(args)
     dt = 1.0e-2
-    internal_steps = 4
-    n_cycles = 12
-    ensemble_size = 12
-    sigma_obs = 0.1
-    sigma_init = 0.2
-    use_linear_observation_matrix = True
-
     omega0 = initial_vorticity(model)
-    truth = model.solve(
-        omega0,
-        dt=dt / internal_steps,
-        n_steps=n_cycles * internal_steps,
-        store_every=internal_steps,
+    truth_hat = solve_packed_spectral(
+        model,
+        model.to_spectral_state(omega0),
+        dt=dt,
+        n_steps=args.n_cycles,
     )
-    truth_flat = truth.reshape(len(truth), model.state_dim)
-    times = dt * np.arange(len(truth))
+    truth = np.stack([model.from_spectral_state(x_hat) for x_hat in truth_hat])
 
-    grid_obs = model.grid_observation(stride=4)
-    H = (
-        model.grid_observation(stride=4, linear=True)
-        if use_linear_observation_matrix
-        else grid_obs.apply_flat
-    )
-    R = sigma_obs**2 * np.eye(grid_obs.obs_dim)
-    y = np.stack([grid_obs.apply_flat(x) for x in truth_flat])
-    y += rng.multivariate_normal(np.zeros(grid_obs.obs_dim), R, size=len(y))
+    obs, H, R, y = make_observations(model, truth_hat, rng, args.kmax_obs)
 
-    X0 = truth_flat[0] + sigma_init * rng.standard_normal(
-        size=(ensemble_size, model.state_dim)
+    X0 = truth_hat[0] + 0.2 * rng.standard_normal(
+        size=(args.ensemble_size, model.spectral_state_dim)
     )
-    etkf = ETKF(model.as_forecast(internal_steps=internal_steps), H, R, alpha=1.02)
+    etkf = ETKF(model.as_spectral_forecast(internal_steps=2), H, R, alpha=1.02)
     etkf.initialize(X0)
 
-    analysis_rmse = [rmse(etkf.X.mean(axis=0), truth_flat[0])]
-    obs_rmse = [rmse(y[0], grid_obs.apply_flat(truth_flat[0]))]
-    for n in range(1, len(truth_flat)):
+    analysis_rmse = [rmse(model.from_spectral_state(etkf.X.mean(axis=0)), truth[0])]
+    for n in range(1, len(truth_hat)):
         etkf.forecast(dt)
         etkf.update(y[n])
-        analysis_rmse.append(rmse(etkf.X.mean(axis=0), truth_flat[n]))
-        obs_rmse.append(rmse(y[n], grid_obs.apply_flat(truth_flat[n])))
+        analysis = model.from_spectral_state(etkf.X.mean(axis=0))
+        analysis_rmse.append(rmse(analysis, truth[n]))
 
-    fourier_obs = model.independent_low_mode_observation(kmax=2)
-    fourier_y = fourier_obs.observe_spectral(model.rfft(truth[-1]))
-
-    print("state dimension:", model.state_dim)
-    print("observation dimension:", grid_obs.obs_dim)
-    print("ensemble size:", ensemble_size)
+    print("NSE2D ETKF API smoke test")
+    print("state space: packed rfft2 vorticity")
+    print("spectral state dimension:", model.spectral_state_dim)
+    print("observation dimension:", obs.obs_dim)
     print("linear observation matrix:", isinstance(H, np.ndarray))
+    print("ensemble size:", args.ensemble_size)
+    print("cycles:", args.n_cycles)
     print("final analysis RMSE:", analysis_rmse[-1])
-    print("time-mean analysis RMSE:", float(np.mean(analysis_rmse)))
-    print("time-mean observation RMSE:", float(np.mean(obs_rmse)))
-    print("independent low-mode observation dimension:", fourier_obs.obs_dim)
-    print("independent low-mode observation norm:", np.linalg.norm(fourier_y))
-
-    try:
-        output_dir = Path("data/nse2d_etkf")
-        output_dir.mkdir(parents=True, exist_ok=True)
-        fig = plot_rmse(times, analysis_rmse, obs_rmse)
-        fig.savefig(output_dir / "rmse.png", dpi=150)
-        fig.clf()
-        analysis = etkf.X.mean(axis=0).reshape(model.shape)
-        fig = plot_final_vorticity(model, truth[-1], analysis)
-        fig.savefig(output_dir / "final_vorticity.png", dpi=150)
-        fig.clf()
-        print("saved figures to:", output_dir)
-    except ModuleNotFoundError as exc:
-        if exc.name != "matplotlib":
-            raise
-        print("matplotlib is not installed; skipping figure export")
 
 
 if __name__ == "__main__":

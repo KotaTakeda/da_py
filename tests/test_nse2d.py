@@ -2,12 +2,13 @@ import subprocess
 import sys
 
 import numpy as np
+import pytest
 
 from da.nse2d import NSE2DConfig, NSE2DTorus
 
 
-def _model(nx=16, ny=16, viscosity=1.0e-2):
-    return NSE2DTorus(NSE2DConfig(nx=nx, ny=ny, viscosity=viscosity))
+def _model(nx=16, ny=16, viscosity=1.0e-2, length=2 * np.pi):
+    return NSE2DTorus(NSE2DConfig(nx=nx, ny=ny, viscosity=viscosity, length=length))
 
 
 def _grid(model):
@@ -62,6 +63,40 @@ def test_unforced_viscous_dynamics_decay_energy_and_enstrophy():
     assert model.enstrophy(omega1) < model.enstrophy(omega0)
 
 
+def test_kolmogorov_flow_is_steady_with_matching_forcing():
+    length = 3.0
+    base = _model(nx=16, ny=16, viscosity=1.0e-2, length=length)
+    forcing = base.kolmogorov_forcing(mode=2, amplitude=1.5)
+    model = NSE2DTorus(
+        NSE2DConfig(
+            nx=16,
+            ny=16,
+            viscosity=1.0e-2,
+            length=length,
+            forcing=forcing,
+        )
+    )
+    omega = model.kolmogorov_vorticity(mode=2, amplitude=1.5)
+    expected_u, expected_v = model.kolmogorov_velocity(mode=2, amplitude=1.5)
+    u, v = model.velocity(omega)
+
+    np.testing.assert_allclose(model.rhs(omega), 0.0, atol=1.0e-12)
+    np.testing.assert_allclose(u, expected_u, atol=1.0e-12)
+    np.testing.assert_allclose(v, expected_v, atol=1.0e-12)
+
+
+def test_kolmogorov_mode_must_be_positive():
+    model = _model()
+
+    for method in (
+        model.kolmogorov_velocity,
+        model.kolmogorov_vorticity,
+        model.kolmogorov_forcing,
+    ):
+        with pytest.raises(ValueError, match="mode must be positive"):
+            method(mode=0)
+
+
 def test_forecast_adapter_shapes_for_single_state_and_batches():
     model = _model(nx=8, ny=8)
     x, y = _grid(model)
@@ -104,6 +139,23 @@ def test_spectral_step_matches_real_space_step():
     np.testing.assert_allclose(model.irfft(omega_hat_next), omega_next)
 
 
+def test_packed_spectral_state_roundtrip_and_forecast_match_real_space():
+    model = _model(nx=8, ny=8)
+    x, y = _grid(model)
+    omega = np.sin(x) + np.cos(2 * y)
+
+    x_hat = model.to_spectral_state(omega)
+    assert x_hat.shape == (model.spectral_state_dim,)
+    assert model.spectral_state_dim == model.state_dim
+    np.testing.assert_allclose(model.from_spectral_state(x_hat), omega)
+
+    forecast = model.as_spectral_forecast(internal_steps=2)
+    x_hat_next = forecast(x_hat, 2.0e-3)
+    omega_next = model.forecast_fn(dt=1.0e-3, n_steps=2)(omega.reshape(-1))
+
+    np.testing.assert_allclose(model.from_spectral_state(x_hat_next).reshape(-1), omega_next)
+
+
 def test_observation_operators_are_deterministic_and_shape_consistent():
     model = _model(nx=8, ny=8)
     x, y = _grid(model)
@@ -143,6 +195,18 @@ def test_observation_matrices_match_matrix_free_apply():
         independent.apply_flat(flat),
         atol=1e-14,
     )
+
+    spectral = model.spectral_low_mode_observation(kmax=1)
+    x_hat = model.to_spectral_state(omega)
+    H_spectral = spectral.as_matrix()
+    np.testing.assert_allclose(H_spectral @ x_hat, spectral.apply_flat(x_hat))
+    np.testing.assert_allclose(
+        model.spectral_low_mode_observation(kmax=1, linear=True),
+        H_spectral,
+    )
+    low_state = spectral.to_spectral_state(spectral.apply_flat(x_hat))
+    np.testing.assert_allclose(H_spectral @ low_state, spectral.apply_flat(x_hat))
+    assert spectral.observation_variances(sigma0=0.1).shape == (spectral.obs_dim,)
 
 
 def test_independent_low_mode_observation_uses_minimal_real_coefficients():
