@@ -9,6 +9,8 @@ Usage:
     # internal_steps subdivides the DA forecast interval dt.
     M = model.as_forecast(internal_steps=5)  # M(x_flat, dt) -> x_flat
     obs = model.grid_observation(stride=4)
+
+    # dealias=True uses 2/3 truncation; dealias="pad" uses 3/2 padding.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ class NSE2DConfig:
     ny: int = 64
     viscosity: float = 1.0e-3
     length: float = 2 * np.pi
-    dealias: bool = True
+    dealias: bool | str = True
     forcing: ArrayLike | Callable[[ArrayLike], ArrayLike] | None = None
 
     def __post_init__(self):
@@ -38,6 +40,8 @@ class NSE2DConfig:
             raise ValueError("viscosity must be non-negative")
         if self.length <= 0:
             raise ValueError("length must be positive")
+        if self.dealias not in {False, True, "2/3", "pad"}:
+            raise ValueError("dealias must be False, True, '2/3', or 'pad'")
 
 
 class NSE2DTorus:
@@ -72,14 +76,45 @@ class NSE2DTorus:
         nonzero = self.k2 > 0
         self._inv_k2[nonzero] = 1.0 / self.k2[nonzero]
         self._dealias_mask = self._make_dealias_mask()
+        self._pad_shape = (3 * self.ny // 2, 3 * self.nx // 2)
+        self._pad_scale = np.prod(self._pad_shape) / self.state_dim
+        dx_pad = config.length / self._pad_shape[1]
+        dy_pad = config.length / self._pad_shape[0]
+        kx_pad = 2 * np.pi * np.fft.fftfreq(self._pad_shape[1], d=dx_pad)
+        ky_pad = 2 * np.pi * np.fft.fftfreq(self._pad_shape[0], d=dy_pad)
+        self._kx_pad, self._ky_pad = np.meshgrid(kx_pad, ky_pad)
+        self._pad_y_indices = _mode_indices(self.ny, self._pad_shape[0])
+        self._pad_x_indices = _mode_indices(self.nx, self._pad_shape[1])
+        self._pad_resolved_mask = self._make_pad_resolved_mask()
 
     def _make_dealias_mask(self):
-        if not self.config.dealias:
+        if self.config.dealias in {False, "pad"}:
             return np.ones(self.shape, dtype=bool)
         mx = np.fft.fftfreq(self.nx) * self.nx
         my = np.fft.fftfreq(self.ny) * self.ny
         ix, iy = np.meshgrid(mx, my)
         return (np.abs(ix) <= self.nx / 3) & (np.abs(iy) <= self.ny / 3)
+
+    def _make_pad_resolved_mask(self):
+        mask = np.ones(self.shape, dtype=bool)
+        if self.nx % 2 == 0:
+            mask[:, self.nx // 2] = False
+        if self.ny % 2 == 0:
+            mask[self.ny // 2, :] = False
+        return mask
+
+    def _pad_fft(self, field_hat):
+        padded = np.zeros(self._pad_shape, dtype=complex)
+        padded[np.ix_(self._pad_y_indices, self._pad_x_indices)] = np.where(
+            self._pad_resolved_mask,
+            field_hat,
+            0.0,
+        )
+        return padded * self._pad_scale
+
+    def _truncate_fft(self, field_hat_pad):
+        truncated = field_hat_pad[np.ix_(self._pad_y_indices, self._pad_x_indices)]
+        return np.where(self._pad_resolved_mask, truncated, 0.0) / self._pad_scale
 
     def _as_state(self, omega):
         arr = np.asarray(omega)
@@ -214,6 +249,21 @@ class NSE2DTorus:
         v = self.ifft(-1j * self.kx * psi_hat)
         return u, v
 
+    def _advective_term_hat_padded(self, omega_hat):
+        omega_hat_pad = self._pad_fft(omega_hat)
+        k2_pad = self._kx_pad**2 + self._ky_pad**2
+        inv_k2_pad = np.zeros_like(k2_pad)
+        nonzero = k2_pad > 0
+        inv_k2_pad[nonzero] = 1.0 / k2_pad[nonzero]
+        psi_hat_pad = omega_hat_pad * inv_k2_pad
+        psi_hat_pad[0, 0] = 0.0
+
+        u = np.fft.ifft2(1j * self._ky_pad * psi_hat_pad).real
+        v = np.fft.ifft2(-1j * self._kx_pad * psi_hat_pad).real
+        omega_x = np.fft.ifft2(1j * self._kx_pad * omega_hat_pad).real
+        omega_y = np.fft.ifft2(1j * self._ky_pad * omega_hat_pad).real
+        return self._truncate_fft(np.fft.fft2(u * omega_x + v * omega_y))
+
     def _forcing(self, omega):
         forcing = self.config.forcing
         if forcing is None:
@@ -230,11 +280,14 @@ class NSE2DTorus:
     def rhs(self, omega):
         omega = self._as_state(omega)
         omega_hat = self.fft(omega)
-        u, v = self.velocity(omega)
-        omega_x = self.ifft(1j * self.kx * omega_hat)
-        omega_y = self.ifft(1j * self.ky * omega_hat)
-        adv_hat = np.fft.fft2(u * omega_x + v * omega_y)
-        adv_hat = np.where(self._dealias_mask, adv_hat, 0.0)
+        if self.config.dealias == "pad":
+            adv_hat = self._advective_term_hat_padded(omega_hat)
+        else:
+            u, v = self.velocity(omega)
+            omega_x = self.ifft(1j * self.kx * omega_hat)
+            omega_y = self.ifft(1j * self.ky * omega_hat)
+            adv_hat = np.fft.fft2(u * omega_x + v * omega_y)
+            adv_hat = np.where(self._dealias_mask, adv_hat, 0.0)
         diffusion = self.ifft(-self.config.viscosity * self.k2 * omega_hat)
         return -self.ifft(adv_hat) + diffusion + self._forcing(omega)
 
@@ -295,6 +348,42 @@ class NSE2DTorus:
     def enstrophy(self, omega):
         omega = self._as_state(omega)
         return float(0.5 * np.mean(omega**2))
+
+    def radial_spectrum(self, omega, *, quantity="enstrophy"):
+        """Return shell-summed kinetic-energy or enstrophy spectrum.
+
+        Shells are indexed by integer Fourier mode radius.  The spectrum sums
+        to ``energy(omega)`` or ``enstrophy(omega)`` up to roundoff.
+        """
+        if quantity not in {"energy", "enstrophy"}:
+            raise ValueError("quantity must be 'energy' or 'enstrophy'")
+        coeff = self.fft(omega) / self.state_dim
+        if quantity == "enstrophy":
+            density = 0.5 * np.abs(coeff) ** 2
+        else:
+            density = np.zeros(self.shape)
+            nonzero = self.k2 > 0
+            density[nonzero] = 0.5 * np.abs(coeff[nonzero]) ** 2 / self.k2[nonzero]
+
+        kx_index = np.fft.fftfreq(self.nx) * self.nx
+        ky_index = np.fft.fftfreq(self.ny) * self.ny
+        ix, iy = np.meshgrid(kx_index, ky_index)
+        shell_index = np.floor(np.sqrt(ix**2 + iy**2)).astype(int)
+        shells = np.arange(shell_index.max() + 1)
+        spectrum = np.bincount(
+            shell_index.reshape(-1),
+            weights=density.reshape(-1),
+            minlength=len(shells),
+        )
+        return shells, spectrum
+
+    def spectral_tail_fraction(self, omega, cutoff, *, quantity="enstrophy"):
+        """Fraction of spectral diagnostic contained in shells ``k >= cutoff``."""
+        shells, spectrum = self.radial_spectrum(omega, quantity=quantity)
+        total = float(np.sum(spectrum))
+        if total == 0.0:
+            return 0.0
+        return float(np.sum(spectrum[shells >= cutoff]) / total)
 
     def _forecast_flat(self, x, dt, n_steps):
         arr = np.asarray(x)
@@ -373,6 +462,13 @@ def _dense_observation_matrix(obs):
 
 def _real_vector_dim(real_only):
     return sum(1 if is_real else 2 for is_real in real_only)
+
+
+def _mode_indices(n, n_pad):
+    modes = np.rint(np.fft.fftfreq(n) * n).astype(int)
+    pad_modes = np.rint(np.fft.fftfreq(n_pad) * n_pad).astype(int)
+    pad_positions = {mode: index for index, mode in enumerate(pad_modes)}
+    return np.asarray([pad_positions[mode] for mode in modes])
 
 
 def _packed_positions(indices, real_only):
