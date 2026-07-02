@@ -32,16 +32,60 @@ class NSE2DConfig:
     length: float = 2 * np.pi
     dealias: bool | str = True
     forcing: ArrayLike | Callable[[ArrayLike], ArrayLike] | None = None
+    drag: float = 0.0
 
     def __post_init__(self):
         if self.nx <= 0 or self.ny <= 0:
             raise ValueError("nx and ny must be positive")
         if self.viscosity < 0:
             raise ValueError("viscosity must be non-negative")
+        if self.drag < 0:
+            raise ValueError("drag must be non-negative")
         if self.length <= 0:
             raise ValueError("length must be positive")
         if self.dealias not in {False, True, "2/3", "pad"}:
             raise ValueError("dealias must be False, True, '2/3', or 'pad'")
+
+
+def inubushi_caulfield_config(
+    *,
+    nx=64,
+    ny=64,
+    viscosity=1.0e-3,
+    drag=1.0e-1,
+    forcing_mode=4,
+    forcing_amplitude=1.0,
+    length=2 * np.pi,
+    dealias="pad",
+):
+    """Return the forced-damped Kolmogorov-flow reference configuration.
+
+    This uses the vorticity equation
+    ``omega_t + u dot grad omega = nu Laplacian omega - drag*omega + F_omega``
+    with ``F_omega = -forcing_amplitude*k_f*cos(k_f*y)`` on ``[0, length]^2``.
+    The default ``dealias="pad"`` uses 3/2 padding for the nonlinear term.
+    """
+    cfg = NSE2DConfig(
+        nx=nx,
+        ny=ny,
+        viscosity=viscosity,
+        drag=drag,
+        length=length,
+        dealias=dealias,
+    )
+    model = NSE2DTorus(cfg)
+    return NSE2DConfig(
+        nx=nx,
+        ny=ny,
+        viscosity=viscosity,
+        drag=drag,
+        length=length,
+        dealias=dealias,
+        forcing=model.kolmogorov_vorticity_forcing(
+            mode=forcing_mode,
+            amplitude=forcing_amplitude,
+        ),
+    )
 
 
 class NSE2DTorus:
@@ -151,16 +195,27 @@ class NSE2DTorus:
 
         For ``u=A sin(k y), v=0`` and ``omega=-A k cos(k y)``, the advection
         term vanishes and the steady vorticity equation requires
-        ``forcing = -nu * Laplacian(omega) = -nu * A * k**3 * cos(k y)``.
+        ``forcing = -nu * Laplacian(omega) + drag*omega``.
         """
         _, y = self.grid()
         wavenumber = self._kolmogorov_wavenumber(mode)
         return (
-            -self.config.viscosity
-            * amplitude
-            * wavenumber**3
+            -(
+                self.config.viscosity * amplitude * wavenumber**3
+                + self.config.drag * amplitude * wavenumber
+            )
             * np.cos(wavenumber * y)
         )
+
+    def kolmogorov_vorticity_forcing(self, mode=4, amplitude=1.0):
+        """Return curl of ``amplitude*sin(k y) e_x``.
+
+        For the velocity forcing ``f = amplitude*sin(k y) e_x``, the vorticity
+        forcing is ``F_omega = -amplitude*k*cos(k y)``.
+        """
+        _, y = self.grid()
+        wavenumber = self._kolmogorov_wavenumber(mode)
+        return -amplitude * wavenumber * np.cos(wavenumber * y)
 
     def fft(self, field):
         return np.fft.fft2(self._as_state(field))
@@ -289,7 +344,8 @@ class NSE2DTorus:
             adv_hat = np.fft.fft2(u * omega_x + v * omega_y)
             adv_hat = np.where(self._dealias_mask, adv_hat, 0.0)
         diffusion = self.ifft(-self.config.viscosity * self.k2 * omega_hat)
-        return -self.ifft(adv_hat) + diffusion + self._forcing(omega)
+        drag = -self.config.drag * omega
+        return -self.ifft(adv_hat) + diffusion + drag + self._forcing(omega)
 
     def step(self, omega, dt):
         omega = self._as_state(omega)
@@ -384,6 +440,13 @@ class NSE2DTorus:
         if total == 0.0:
             return 0.0
         return float(np.sum(spectrum[shells >= cutoff]) / total)
+
+    def palinstrophy(self, omega):
+        omega = self._as_state(omega)
+        omega_hat = self.fft(omega)
+        omega_x = self.ifft(1j * self.kx * omega_hat)
+        omega_y = self.ifft(1j * self.ky * omega_hat)
+        return float(0.5 * np.mean(omega_x**2 + omega_y**2))
 
     def _forecast_flat(self, x, dt, n_steps):
         arr = np.asarray(x)
