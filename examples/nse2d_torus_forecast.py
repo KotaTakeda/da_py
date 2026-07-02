@@ -14,16 +14,17 @@ def initial_vorticity(model, mode):
 
 
 def save_figure_safely(fig, path, *, dpi=150):
-    """Backward-compatible alias for the shared atomic PNG writer.
+    """Backward-compatible alias for the shared atomic figure writer.
 
     The original bespoke implementation (temp file + PNG verify + atomic
-    ``os.replace``) now lives in ``da.viz.save_png`` /
-    ``research_figures.save_figure``; keep this thin wrapper so any external
-    caller of this script keeps working.
+    ``os.replace``) now lives in ``da.viz.save_figure``; keep this thin wrapper
+    so any external caller of this script keeps working. Like the original,
+    the file is written to ``path`` verbatim (no suffix rewriting), the write
+    is atomic, and PNG output is verified when Pillow is available.
     """
     from da import viz
 
-    return viz.save_png(fig, path, dpi=dpi)
+    return viz.save_figure(fig, path, dpi=dpi)
 
 
 def build_kolmogorov_model(args):
@@ -44,6 +45,16 @@ def solve_trajectory(model, omega0, args):
     traj = traj[: args.n_panels]
     times = args.dt * store_every * np.arange(len(traj))
     return traj, times
+
+
+def _panel_label(i):
+    """Spreadsheet-style panel label: 0 -> "(a)", 25 -> "(z)", 26 -> "(aa)"."""
+    letters = ""
+    i += 1
+    while i:
+        i, rem = divmod(i - 1, 26)
+        letters = chr(ord("a") + rem) + letters
+    return f"({letters})"
 
 
 def plot_vorticity_panels(
@@ -67,6 +78,8 @@ def plot_vorticity_panels(
 
     if len(traj) == 0:
         raise ValueError("traj must contain at least one state")
+    if len(times) != len(traj):
+        raise ValueError("times and traj must have the same length")
     vlim = float(np.percentile(np.abs(traj), 99.0))
     nrows = int(np.ceil(len(traj) / ncols))
     cmap = viz.vorticity_cmap(cmap_name)
@@ -91,7 +104,9 @@ def plot_vorticity_panels(
 
         used = axes[: len(traj)]
         viz.hide_unused(axes, len(traj))
-        viz.panel_labels(used)
+        # Pass explicit labels so runs with more than 26 panels (--n-panels)
+        # continue past "(z)" as "(aa)", "(ab)", ... instead of failing.
+        viz.panel_labels(used, labels=[_panel_label(i) for i in range(len(used))])
         viz.shared_colorbar(fig, im, used, label="vorticity")
     return fig
 

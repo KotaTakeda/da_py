@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from da.etkf import ETKF
+from da.loss import loss_rms
 from da.nse2d import NSE2DTorus, inubushi_caulfield_config
 
 
@@ -32,7 +33,8 @@ def initial_vorticity(model):
 
 
 def rmse(x, x_ref):
-    return float(np.sqrt(np.mean((x - x_ref) ** 2)))
+    """Scalar RMSE between two fields via the shared da.loss helper."""
+    return float(loss_rms(np.ravel(x), np.ravel(x_ref)))
 
 
 def solve_packed_spectral(model, x_hat0, dt, n_steps):

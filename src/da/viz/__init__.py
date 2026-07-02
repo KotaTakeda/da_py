@@ -28,42 +28,18 @@ that keeps ``seaborn`` optional.
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 # Re-export the vendored, domain-independent figure API unchanged so callers
 # can do ``from da import viz; viz.line_plot(...)`` without reaching into the
-# private vendored package.
-from ._research_figures import (  # noqa: F401
-    PUBLICATION_STYLE,
-    COLOR_CYCLES,
-    apply_style,
-    colorbar,
-    downsample_for_display,
-    get_color_cycle,
-    heatmap_plot,
-    hide_unused,
-    histogram_plot,
-    image_plot,
-    line_plot,
-    line_plot_3d,
-    list_color_cycles,
-    loglog_plot,
-    multi_panel,
-    panel_labels,
-    property_cycle,
-    save_figure,
-    save_pdf,
-    save_png,
-    scatter_plot,
-    scatter_plot_3d,
-    set_color_cycle,
-    setup_figure,
-    shared_colorbar,
-    single_panel,
-    style_context,
-    style_path,
-    vector_field_plot,
-)
+# private vendored package. The exported names are derived from the vendored
+# package's own ``__all__`` so a refreshed vendored copy is re-exported here
+# without having to keep a second hand-maintained list in sync.
+from ._research_figures import *  # noqa: F401,F403
+from ._research_figures import __all__ as _RESEARCH_FIGURES_ALL
 
 
+@lru_cache(maxsize=None)
 def vorticity_cmap(name: str = "icefire"):
     """Resolve a colormap for signed vorticity fields, keeping seaborn optional.
 
@@ -82,41 +58,4 @@ def vorticity_cmap(name: str = "icefire"):
     return sns.color_palette("icefire", as_cmap=True)
 
 
-__all__ = [
-    # style / setup
-    "apply_style",
-    "style_context",
-    "style_path",
-    "setup_figure",
-    "PUBLICATION_STYLE",
-    # export
-    "save_figure",
-    "save_pdf",
-    "save_png",
-    # palettes
-    "COLOR_CYCLES",
-    "list_color_cycles",
-    "get_color_cycle",
-    "set_color_cycle",
-    "property_cycle",
-    # primitives
-    "line_plot",
-    "scatter_plot",
-    "loglog_plot",
-    "image_plot",
-    "heatmap_plot",
-    "histogram_plot",
-    "vector_field_plot",
-    "line_plot_3d",
-    "scatter_plot_3d",
-    # layouts
-    "single_panel",
-    "multi_panel",
-    "hide_unused",
-    "colorbar",
-    "shared_colorbar",
-    "panel_labels",
-    "downsample_for_display",
-    # da_py-specific helpers
-    "vorticity_cmap",
-]
+__all__ = [*_RESEARCH_FIGURES_ALL, "vorticity_cmap"]
