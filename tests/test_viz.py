@@ -55,6 +55,20 @@ def test_plot_loss_preserves_signature_and_return():
     plt.close(fig)
 
 
+def test_plot_loss_creates_figure_when_ax_missing():
+    a = np.linspace(0.0, 1.0, 6).reshape(6, 1) * np.ones((6, 2))
+    b = a + 0.5
+    before = set(plt.get_fignums())
+    loss = plot_loss(a, b, loss_rms)
+    new_figs = set(plt.get_fignums()) - before
+    assert np.asarray(loss).shape == (6,)
+    # A standalone call creates its own (publication-styled) figure.
+    assert len(new_figs) == 1
+    fig = plt.figure(new_figs.pop())
+    assert len(fig.axes[0].lines) == 1
+    plt.close(fig)
+
+
 def test_plot_loss_accepts_x_index():
     a = np.random.default_rng(0).standard_normal((8, 2))
     b = np.random.default_rng(1).standard_normal((8, 2))
