@@ -137,7 +137,6 @@ class PO:
         # !NOTE: 転置している
         Xf = self.X.T  # (Nx, m)
         xf = Xf.mean(axis=1)
-        H = self.H
 
         # NOTE: この実装ではadditive inflationは使えない
         dXf = Xf - xf[:, None]  # (Nx, m)
