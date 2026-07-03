@@ -28,9 +28,10 @@ The generic primitives and helpers are re-exported below unchanged, with two
   optional;
 - the default categorical color cycle is :data:`DEFAULT_COLOR_CYCLE`
   (``"earth_muted_natural"``) instead of the style file's own cycle: the
-  ``style_context`` / ``setup_figure`` / ``single_panel`` / ``multi_panel``
-  entry points below apply it, and every one accepts ``cycle=`` to pick
-  another palette (or ``cycle=None`` for the plain publication cycle).
+  ``apply_style`` / ``style_context`` / ``setup_figure`` / ``single_panel`` /
+  ``multi_panel`` entry points below apply it, and every one accepts
+  ``cycle=`` to pick another palette (or ``cycle=None`` for the plain
+  publication cycle).
 """
 
 from __future__ import annotations
@@ -52,6 +53,11 @@ from ._research_figures import __all__ as _RESEARCH_FIGURES_ALL
 # palettes module). The wrappers below apply it; pass cycle=None to keep the
 # publication style's own cycle.
 DEFAULT_COLOR_CYCLE = "earth_muted_natural"
+
+
+def apply_style(name="publication", extra_rc=None, *, cycle=DEFAULT_COLOR_CYCLE):
+    """:func:`research_figures.apply_style` with da_py's default color cycle."""
+    return _research_figures.apply_style(name, extra_rc, cycle=cycle)
 
 
 def style_context(name="publication", extra_rc=None, *, cycle=DEFAULT_COLOR_CYCLE):
