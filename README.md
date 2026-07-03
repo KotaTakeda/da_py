@@ -120,6 +120,8 @@ with viz.style_context():
 2D NSE の DA 検証は段階的に行います。ETKF の前段として、低モード観測のみで
 同期するか(直接挿入/ナッジング)を `examples/nse2d_synchronization.py` で
 検証できます(`NSE2DTorus.project_low_modes` / `project_high_modes` を使用)。
+その後段の Kelly 型 ETKF ベンチマーク(自由発展/全モード/低モード/
+高モードのみ観測の比較)は `examples/nse2d_kelly_etkf.py` を参照してください。
 
 ## OSSE settings
 
