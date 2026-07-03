@@ -1,5 +1,7 @@
 import numpy as np
 
+from da.etkf import _batch_observation
+
 # ==========================================
 # EnsembleKalmanFilter (Perturbed Observation: PO)
 # ==========================================
@@ -39,7 +41,7 @@ class PO:
         self.H = H
         self.linear_obs = isinstance(H, np.ndarray)
         if not self.linear_obs:
-            self.H = np.vectorize(H, signature="(Nx)->(Ny)")
+            self.H = _batch_observation(H)
 
         self.R = R
 
@@ -100,19 +102,26 @@ class PO:
 
         # additive covariance inflation
         if self.alpha > 0:  # この意味のadditive inflation
-            Pf += self.alpha * np.eye(self.Nx)
+            # In-place diagonal add; equivalent to Pf += alpha * I without
+            # allocating an (Nx, Nx) identity each update.
+            Pf[np.diag_indices_from(Pf)] += self.alpha
 
         # projection
         if self.project_cov:
             Pf = self.Pi @ Pf @ self.Pi
 
-        K = (
-            Pf @ H.T @ np.linalg.inv(H @ Pf @ H.T + self.R)
-        )  # (Nx, Ny) FIXME: 逆行列を明示計算するのは非効率.
+        # K = Pf H^T (H Pf H^T + R)^{-1}, evaluated by solving the symmetric
+        # system instead of forming the inverse explicitly (same formula).
+        S = H @ Pf @ H.T + self.R
+        K = np.linalg.solve(S, H @ Pf.T).T  # (Nx, Ny)
 
+        # NOTE: multivariate_normal re-factorizes R on every call; caching a
+        # Cholesky factor of R at initialize() and drawing L @ standard_normal
+        # would be cheaper, but it changes which numbers a fixed global seed
+        # produces, so it is left for a follow-up that may alter seeded runs.
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
-        ).T  # (Ny, m) # FIXME: 内部で毎回コレスキーが使われているので，コレスキー分解を保存しておいて使い回すべき
+        ).T  # (Ny, m)
         Y_rep = y_obs[:, None] + eta_rep
 
         Xa = Xf + K @ (Y_rep - H @ Xf)
@@ -141,13 +150,16 @@ class PO:
             dYf *= self.alpha
             # Xf = xf[:, None] + dXf
 
-        K = (
-            dXf @ dYf.T @ np.linalg.inv(dYf @ dYf.T + (self.m - 1) * self.R)
-        )  # (Nx, Ny) FIXME: 逆行列を明示計算するのは非効率.
+        # K = dXf dYf^T (dYf dYf^T + (m-1) R)^{-1}, evaluated by solving the
+        # symmetric system instead of forming the inverse explicitly.
+        S = dYf @ dYf.T + (self.m - 1) * self.R
+        K = np.linalg.solve(S, dYf @ dXf.T).T  # (Nx, Ny)
 
+        # NOTE: see _update1 — caching a Cholesky factor of R would be
+        # cheaper but changes seeded draws; left for a follow-up.
         eta_rep = np.random.multivariate_normal(
             np.zeros_like(y_obs), self.R, self.m
-        ).T  # (m, Ny) # FIXME: 内部で毎回コレスキーが使われているので，コレスキー分解を保存しておいて使い回すべき
+        ).T  # (Ny, m)
         Y_rep = y_obs[:, None] + eta_rep
 
         Xa = Xf + K @ (Y_rep - Yf)

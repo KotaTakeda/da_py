@@ -9,6 +9,24 @@ from numpy.linalg import inv
 # ==========================================
 
 
+def _batch_observation(H):
+    """Wrap a per-state observation callable to accept ensemble batches.
+
+    Same contract as the previous ``np.vectorize(H, signature="(Nx)->(Ny)")``
+    wrapper — a 1D state maps to a 1D observation and a stacked (m, Nx) batch
+    maps to (m, Ny) by applying ``H`` per member — but without np.vectorize's
+    per-call dispatch overhead.
+    """
+
+    def apply(X):
+        X = np.asarray(X)
+        if X.ndim == 1:
+            return np.asarray(H(X))
+        return np.stack([np.asarray(H(x)) for x in X])
+
+    return apply
+
+
 class ETKF:
     def __init__(
         self,
@@ -30,7 +48,7 @@ class ETKF:
         self.H = H
         self.linear_obs = isinstance(H, np.ndarray)
         if not self.linear_obs:
-            self.H = np.vectorize(H, signature="(Nx)->(Ny)")
+            self.H = _batch_observation(H)
 
         self.R = R
         self.Rinv = inv(self.R)
