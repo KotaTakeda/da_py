@@ -69,7 +69,7 @@ COLOR_CYCLES: dict[str, list[str]] = {
     # orange, blue, vermilion).
     "high_contrast_scientific": [
         "#004488", "#DDAA33", "#BB5566", "#000000", "#44AA99",
-        "#AA4499", "#DDDDDD", "#EE7733", "#0077BB", "#CC3311",
+        "#AA4499", "#AAAAAA", "#EE7733", "#0077BB", "#CC3311",
     ],
     # Sequential blues (single-hue ramp; suited to ordered series).
     "blues": ["#011f4b", "#03396c", "#005b96", "#6497b1", "#b3cde0"],
