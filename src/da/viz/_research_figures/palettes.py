@@ -8,6 +8,9 @@ combines:
   (``matplotlib/notebooks/demo_styles.ipynb``): ``probnum``, ``sophisticated``,
   ``nordic``, ``blues``, and the Tableau 10 cycle;
 - the Okabe-Ito colorblind-safe palette;
+- Paul Tol qualitative schemes: ``tol_muted_extended`` and
+  ``high_contrast_scientific``;
+- ``earth_muted_natural``, a muted natural/earth-tone cycle;
 - a grayscale cycle for print-only figures (combine with marker/linestyle
   variation via :func:`property_cycle`).
 
@@ -48,6 +51,25 @@ COLOR_CYCLES: dict[str, list[str]] = {
     "nordic": [
         "#5E81AC", "#BF616A", "#A3BE8C", "#D08770", "#B48EAD",
         "#88C0D0", "#EBCB8B", "#81A1C1", "#4C566A", "#8FBCBB",
+    ],
+    # Paul Tol's muted qualitative scheme, extended with its light gray
+    # (rose, indigo, sand, green, cyan, wine, teal, olive, purple, gray).
+    "tol_muted_extended": [
+        "#CC6677", "#332288", "#DDCC77", "#117733", "#88CCEE",
+        "#882255", "#44AA99", "#999933", "#AA4499", "#DDDDDD",
+    ],
+    # Muted natural/earth tones (dark blue-green, teal, sand, orange,
+    # terracotta, muted purple, dusty rose, slate blue, sage, ochre).
+    "earth_muted_natural": [
+        "#264653", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51",
+        "#6D597A", "#B56576", "#355070", "#8AB17D", "#BC6C25",
+    ],
+    # High-contrast picks drawn from Paul Tol's high-contrast/bright/vibrant
+    # schemes (deep blue, gold, muted red, black, teal, purple, light gray,
+    # orange, blue, vermilion).
+    "high_contrast_scientific": [
+        "#004488", "#DDAA33", "#BB5566", "#000000", "#44AA99",
+        "#AA4499", "#DDDDDD", "#EE7733", "#0077BB", "#CC3311",
     ],
     # Sequential blues (single-hue ramp; suited to ordered series).
     "blues": ["#011f4b", "#03396c", "#005b96", "#6497b1", "#b3cde0"],

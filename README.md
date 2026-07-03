@@ -93,6 +93,11 @@ python examples/l96_etkf.py
 - 渦度など符号付き場のカラーマップは `da.viz.vorticity_cmap` を使います
   (`seaborn` があれば `icefire`、無ければ `coolwarm` に自動フォールバックし、
   `seaborn` は必須ではありません)。
+- カラーサイクルのデフォルトは `earth_muted_natural`
+  (`da.viz.DEFAULT_COLOR_CYCLE`)です。`style_context` / `single_panel` /
+  `multi_panel` などの `cycle=` 引数で他のパレット
+  (`viz.list_color_cycles()` 参照)や色リストに変更でき、`cycle=None` で
+  publication スタイル本来のサイクルに戻せます。
 - 渦度パネルや RMSE 曲線などドメイン固有の作図関数は `da_py` 側
   (`da.visualize` や `examples/`)に置き、共有レイヤには数値・DA ロジックを
   一切移しません。

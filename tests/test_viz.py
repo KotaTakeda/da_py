@@ -44,6 +44,36 @@ def test_vorticity_cmap_passthrough_and_fallback():
     assert cmap == "coolwarm" or isinstance(cmap, matplotlib.colors.Colormap)
 
 
+def test_default_cycle_is_earth_muted_natural():
+    assert viz.DEFAULT_COLOR_CYCLE == "earth_muted_natural"
+    earth = viz.get_color_cycle("earth_muted_natural")
+    assert earth[0] == "#264653"
+    # The figure entry points apply the da_py default cycle per axes, even
+    # though the vendored setup_figure re-applies the publication style.
+    fig, ax = viz.single_panel()
+    ax.plot([0, 1], [0, 1])
+    assert ax.lines[0].get_color().lower() == earth[0].lower()
+    plt.close(fig)
+    # cycle=None keeps the publication style's own cycle.
+    with viz.style_context(cycle=None):
+        fig, ax = viz.single_panel(cycle=None)
+        ax.plot([0, 1], [0, 1])
+        assert ax.lines[0].get_color().lower() == viz.get_color_cycle("publication")[0].lower()
+    plt.close(fig)
+    # multi_panel applies the cycle to every axes.
+    fig, axes = viz.multi_panel(1, 2)
+    for a in axes:
+        a.plot([0, 1], [0, 1])
+        assert a.lines[0].get_color().lower() == earth[0].lower()
+    plt.close(fig)
+
+
+def test_new_palettes_are_available():
+    for name in ("tol_muted_extended", "earth_muted_natural", "high_contrast_scientific"):
+        assert name in viz.COLOR_CYCLES
+        assert len(viz.get_color_cycle(name)) == 10
+
+
 def test_plot_loss_preserves_signature_and_return():
     a = np.linspace(0.0, 1.0, 12).reshape(12, 1) * np.ones((12, 3))
     b = a + 0.1
