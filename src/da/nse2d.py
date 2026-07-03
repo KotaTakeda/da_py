@@ -539,6 +539,16 @@ class NSE2DTorus:
         obs = IndependentLowModeObservation(self, kmax=kmax)
         return obs.as_matrix() if linear else obs
 
+    def high_mode_observation(self, kmax, *, linear=False):
+        """Complement of the low-mode square: observe only modes above ``kmax``."""
+        obs = HighModeObservation(self, kmax=kmax)
+        return obs.as_matrix() if linear else obs
+
+    def full_mode_observation(self, *, linear=False):
+        """Observe every resolved independent rfft2 coefficient."""
+        obs = IndependentLowModeObservation(self, kmax=None)
+        return obs.as_matrix() if linear else obs
+
     def spectral_low_mode_observation(self, kmax, *, linear=False):
         obs = SpectralLowModeObservation(self, kmax=kmax)
         return obs.as_matrix() if linear else obs
@@ -577,15 +587,23 @@ def _packed_positions(indices, real_only):
     return positions
 
 
-def _independent_rfft_indices(nx, ny, kmax=None):
+def _independent_rfft_indices(nx, ny, kmax=None, *, complement=False):
+    """Non-redundant rfft2 indices, optionally restricted by the square cutoff.
+
+    With ``kmax`` given, keeps modes with ``max(|kx|, |ky|) <= kmax``
+    (``complement=False``) or the remaining high modes (``complement=True``);
+    ``kmax=None`` keeps every resolved mode.
+    """
     indices = []
     real_only = []
     ky_index = np.fft.fftfreq(ny) * ny
     kx_index = np.fft.rfftfreq(nx) * nx
     for iy, ky in enumerate(ky_index):
         for ix, kx in enumerate(kx_index):
-            if kmax is not None and (abs(kx) > kmax or abs(ky) > kmax):
-                continue
+            if kmax is not None:
+                is_low = abs(kx) <= kmax and abs(ky) <= kmax
+                if is_low == complement:
+                    continue
             y_nyquist = ny % 2 == 0 and iy == ny // 2
             if ix == 0 and ky < 0 and not y_nyquist:
                 continue
@@ -641,13 +659,16 @@ class LowModeObservation:
 
 @dataclass
 class IndependentLowModeObservation:
-    """Observe non-redundant low rfft2 coefficients of a real vorticity field."""
+    """Observe non-redundant low rfft2 coefficients of a real vorticity field.
+
+    ``kmax=None`` observes every resolved mode (full spectral observation).
+    """
 
     model: NSE2DTorus
-    kmax: int
+    kmax: int | None
 
     def __post_init__(self):
-        if self.kmax < 0:
+        if self.kmax is not None and self.kmax < 0:
             raise ValueError("kmax must be non-negative")
         self.indices, self.real_only = _independent_rfft_indices(
             self.model.nx,
@@ -679,6 +700,29 @@ class IndependentLowModeObservation:
 
     def as_matrix(self):
         return _dense_observation_matrix(self)
+
+
+@dataclass
+class HighModeObservation(IndependentLowModeObservation):
+    """Observe the non-redundant rfft2 coefficients OUTSIDE the low-mode square.
+
+    The complement ``Q_kmax = I - P_kmax`` of :class:`IndependentLowModeObservation`
+    with the same square integer-mode cutoff: together the two observation
+    vectors cover every resolved independent coefficient exactly once.
+    """
+
+    def __post_init__(self):
+        if self.kmax is None or self.kmax < 0:
+            raise ValueError("kmax must be a non-negative integer")
+        self.indices, self.real_only = _independent_rfft_indices(
+            self.model.nx,
+            self.model.ny,
+            self.kmax,
+            complement=True,
+        )
+        self.state_dim = self.model.state_dim
+        self.spectral_shape = self.model.spectral_shape
+        self.obs_dim = _real_vector_dim(self.real_only)
 
 
 @dataclass
