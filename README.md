@@ -117,6 +117,10 @@ with viz.style_context():
 `examples/l96_etkf.py`, `examples/nse2d_torus_forecast.py`,
 `examples/nse2d_etkf.py` を参照してください。
 
+2D NSE の DA 検証は段階的に行います。ETKF の前段として、低モード観測のみで
+同期するか(直接挿入/ナッジング)を `examples/nse2d_synchronization.py` で
+検証できます(`NSE2DTorus.project_low_modes` / `project_high_modes` を使用)。
+
 ## OSSE settings
 
 ### Example 1

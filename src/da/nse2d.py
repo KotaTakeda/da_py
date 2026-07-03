@@ -130,6 +130,7 @@ class NSE2DTorus:
         self._pad_y_indices = _mode_indices(self.ny, self._pad_shape[0])
         self._pad_x_indices = _mode_indices(self.nx, self._pad_shape[1])
         self._pad_resolved_mask = self._make_pad_resolved_mask()
+        self._low_mode_masks = {}
 
     def _make_dealias_mask(self):
         if self.config.dealias in {False, "pad"}:
@@ -447,6 +448,39 @@ class NSE2DTorus:
         omega_x = self.ifft(1j * self.kx * omega_hat)
         omega_y = self.ifft(1j * self.ky * omega_hat)
         return float(0.5 * np.mean(omega_x**2 + omega_y**2))
+
+    def low_mode_mask(self, kmax):
+        """Boolean full-spectrum mask keeping integer modes |mx|, |my| <= kmax.
+
+        Uses the same square (max-norm) cutoff on integer mode indices as
+        :class:`LowModeObservation`, so the projection and the low-mode
+        observation operators select the same Fourier coefficients.
+        """
+        cached = self._low_mode_masks.get(kmax)
+        if cached is not None:
+            return cached
+        mx = np.fft.fftfreq(self.nx) * self.nx
+        my = np.fft.fftfreq(self.ny) * self.ny
+        MX, MY = np.meshgrid(mx, my)
+        mask = (np.abs(MX) <= kmax) & (np.abs(MY) <= kmax)
+        self._low_mode_masks[kmax] = mask
+        return mask
+
+    def project_low_modes(self, omega, kmax):
+        """Low-pass projection ``P_kmax omega`` in Fourier space.
+
+        Keeps the Fourier coefficients with integer mode indices
+        ``max(|mx|, |my|) <= kmax`` (including the mean) and zeroes the rest;
+        the result is returned in real space. ``P`` is idempotent and
+        ``project_low_modes + project_high_modes`` is the identity.
+        """
+        omega = self._as_state(omega)
+        return self.ifft(self.fft(omega) * self.low_mode_mask(kmax))
+
+    def project_high_modes(self, omega, kmax):
+        """High-pass complement ``Q_kmax = I - P_kmax`` of the low-pass projection."""
+        omega = self._as_state(omega)
+        return omega - self.project_low_modes(omega, kmax)
 
     def _forecast_flat(self, x, dt, n_steps):
         arr = np.asarray(x)
