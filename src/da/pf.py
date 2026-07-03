@@ -126,8 +126,12 @@ class ParticleFilter(object):
         )
 
     def _calculate_weights(self, y_obs):
-        # nll_i = -log p(y_obs | x_i)
-        nll = np.array([self._negative_log_likelihood(x, y_obs) for x in self.X])
+        # nll_i = -log p(y_obs | x_i) = 0.5 dy_i^T R^{-1} dy_i (up to consts,
+        # as in _negative_log_likelihood). h keeps its per-particle contract;
+        # the m quadratic forms are evaluated in one batched einsum instead of
+        # m separate vector-matrix-vector products.
+        dY = y_obs[None, :] - np.stack([np.asarray(self.h(x)) for x in self.X])
+        nll = 0.5 * np.einsum("ij,jk,ik->i", dY, self.Rinv, dY)
 
         # normalize
         nll_min = np.min(nll)
