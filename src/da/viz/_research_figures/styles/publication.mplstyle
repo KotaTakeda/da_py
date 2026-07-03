@@ -1,0 +1,89 @@
+# Publication style for research figures.
+#
+# Baseline Matplotlib style for publication-quality scientific figures.
+# Adapted from the KotaTakeda `DifferentiablePrimitiveEquations`
+# `publication.mplstyle` and aligned with the shared token roles defined in
+# `research-design-system/tokens/`.
+#
+# This file intentionally sets only domain-independent defaults: line width,
+# font size, axis / tick / grid / legend style, and savefig behaviour. Colors
+# follow a restrained, print-safe palette. Domain-specific choices (colormaps,
+# panel counts, physical units) belong in the plotting scripts, not here.
+
+# --- Figure ---------------------------------------------------------------
+figure.figsize      : 5.0, 3.5
+figure.dpi          : 150
+figure.facecolor    : white
+figure.edgecolor    : white
+figure.autolayout   : False
+
+# --- Font -----------------------------------------------------------------
+font.family         : serif
+font.serif          : DejaVu Serif, Times New Roman, Times, Computer Modern Roman
+font.size           : 11.0
+mathtext.fontset    : cm
+
+# --- Axes -----------------------------------------------------------------
+# axes.prop_cycle maps to the token color roles:
+#   primary, secondary, reference, alert, then supporting hues.
+# Hex colors are written WITHOUT a leading '#': in .mplstyle files '#' starts a
+# comment, so '#'-prefixing here would truncate the cycler string. Matplotlib
+# accepts bare 6-digit hex as a color spec.
+axes.prop_cycle     : cycler('color', ['1f4e79', 'b3541e', '3c7a3c', 'a01a2f', '6a4c93', '7f7f7f', '17807e', 'b58b00'])
+axes.titlesize      : 11.0
+axes.titleweight    : bold
+axes.labelsize      : 11.0
+axes.linewidth      : 0.8
+axes.edgecolor      : 222222
+axes.labelcolor     : 111111
+axes.facecolor      : white
+axes.grid           : False
+axes.spines.top     : False
+axes.spines.right   : False
+axes.formatter.use_mathtext : True
+axes.axisbelow      : True
+
+# --- Lines ----------------------------------------------------------------
+lines.linewidth     : 1.5
+lines.markersize    : 4.0
+lines.markeredgewidth : 0.0
+
+# --- Ticks ----------------------------------------------------------------
+xtick.direction     : out
+ytick.direction     : out
+xtick.major.size    : 3.0
+ytick.major.size    : 3.0
+xtick.minor.size    : 1.5
+ytick.minor.size    : 1.5
+xtick.major.width   : 0.8
+ytick.major.width   : 0.8
+xtick.labelsize     : 10.0
+ytick.labelsize     : 10.0
+xtick.color         : 333333
+ytick.color         : 333333
+
+# --- Grid -----------------------------------------------------------------
+grid.color          : cccccc
+grid.linewidth      : 0.6
+grid.alpha          : 0.5
+
+# --- Legend ---------------------------------------------------------------
+legend.fontsize     : 10.0
+legend.frameon      : False
+legend.handlelength : 1.6
+legend.borderaxespad : 0.4
+legend.labelspacing : 0.3
+
+# --- Images ---------------------------------------------------------------
+image.cmap          : viridis
+image.interpolation : nearest
+
+# --- Saving ---------------------------------------------------------------
+savefig.dpi         : 300
+savefig.format      : pdf
+savefig.bbox        : tight
+savefig.pad_inches  : 0.02
+savefig.facecolor   : white
+savefig.transparent : False
+pdf.fonttype        : 42
+ps.fonttype         : 42

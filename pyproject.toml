@@ -38,7 +38,12 @@ dev = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["da"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"da.viz._research_figures" = ["styles/*.mplstyle"]
 
 [tool.black]
 line-length = 88

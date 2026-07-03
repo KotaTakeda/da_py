@@ -1,11 +1,28 @@
 """API smoke test for NSE2D spectral-state ETKF assimilation."""
 
 import argparse
+from pathlib import Path
 
 import numpy as np
 
 from da.etkf import ETKF
+from da.loss import loss_rms
 from da.nse2d import NSE2DTorus, inubushi_caulfield_config
+
+
+def plot_analysis_rmse(analysis_rmse, path):
+    """Save the per-cycle analysis RMSE curve via the shared figure layer."""
+    from da import viz
+
+    with viz.style_context():
+        fig, ax = viz.single_panel(width=5.0, height=3.2)
+        viz.line_plot(
+            np.arange(len(analysis_rmse)), analysis_rmse, ax=ax, marker="o", label="ETKF"
+        )
+        ax.set_xlabel("assimilation cycle")
+        ax.set_ylabel("analysis RMSE")
+        ax.legend()
+    return viz.save_png(fig, path)
 
 
 def initial_vorticity(model):
@@ -16,7 +33,8 @@ def initial_vorticity(model):
 
 
 def rmse(x, x_ref):
-    return float(np.sqrt(np.mean((x - x_ref) ** 2)))
+    """Scalar RMSE between two fields via the shared da.loss helper."""
+    return float(loss_rms(np.ravel(x), np.ravel(x_ref)))
 
 
 def solve_packed_spectral(model, x_hat0, dt, n_steps):
@@ -60,6 +78,11 @@ def parse_args():
     parser.add_argument("--kmax-obs", type=int, default=2)
     parser.add_argument("--ensemble-size", type=int, default=8)
     parser.add_argument("--n-cycles", type=int, default=3)
+    parser.add_argument(
+        "--output-dir",
+        default="data/nse2d_etkf",
+        help="directory for the analysis-RMSE figure (skipped if matplotlib missing)",
+    )
     return parser.parse_args()
 
 
@@ -101,6 +124,14 @@ def main():
     print("ensemble size:", args.ensemble_size)
     print("cycles:", args.n_cycles)
     print("final analysis RMSE:", analysis_rmse[-1])
+
+    try:
+        path = plot_analysis_rmse(analysis_rmse, Path(args.output_dir) / "analysis_rmse.png")
+        print("saved figure to:", path)
+    except ModuleNotFoundError as exc:
+        if exc.name != "matplotlib":
+            raise
+        print("matplotlib is not installed; skipping figure export")
 
 
 if __name__ == "__main__":

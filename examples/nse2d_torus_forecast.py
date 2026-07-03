@@ -1,5 +1,4 @@
 import argparse
-import os
 from pathlib import Path
 
 import numpy as np
@@ -14,42 +13,18 @@ def initial_vorticity(model, mode):
     return omega, xx, yy
 
 
-def vorticity_cmap(name):
-    if name != "icefire":
-        return name
-    try:
-        import seaborn as sns
-
-        return sns.color_palette("icefire", as_cmap=True)
-    except ModuleNotFoundError:
-        return "coolwarm"
-
-
-def verify_png(path):
-    try:
-        from PIL import Image
-    except ModuleNotFoundError:
-        return
-
-    with Image.open(path) as img:
-        img.verify()
-
-
 def save_figure_safely(fig, path, *, dpi=150):
-    import matplotlib.pyplot as plt
+    """Backward-compatible alias for the shared atomic figure writer.
 
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(".tmp.png")
-    try:
-        fig.savefig(tmp_path, dpi=dpi, bbox_inches="tight", facecolor="white")
-        verify_png(tmp_path)
-        os.replace(tmp_path, path)
-    except Exception:
-        tmp_path.unlink(missing_ok=True)
-        raise
-    finally:
-        plt.close(fig)
+    The original bespoke implementation (temp file + PNG verify + atomic
+    ``os.replace``) now lives in ``da.viz.save_figure``; keep this thin wrapper
+    so any external caller of this script keeps working. Like the original,
+    the file is written to ``path`` verbatim (no suffix rewriting), the write
+    is atomic, and PNG output is verified when Pillow is available.
+    """
+    from da import viz
+
+    return viz.save_figure(fig, path, dpi=dpi)
 
 
 def build_kolmogorov_model(args):
@@ -72,6 +47,16 @@ def solve_trajectory(model, omega0, args):
     return traj, times
 
 
+def _panel_label(i):
+    """Spreadsheet-style panel label: 0 -> "(a)", 25 -> "(z)", 26 -> "(aa)"."""
+    letters = ""
+    i += 1
+    while i:
+        i, rem = divmod(i - 1, 26)
+        letters = chr(ord("a") + rem) + letters
+    return f"({letters})"
+
+
 def plot_vorticity_panels(
     traj,
     times,
@@ -81,54 +66,48 @@ def plot_vorticity_panels(
     interpolation="nearest",
     ncols=4,
 ):
-    import matplotlib.pyplot as plt
+    """Vorticity snapshots as a labelled panel grid with a shared colorbar.
+
+    Built on the generic figure layer: :func:`da.viz.multi_panel` for the grid,
+    :func:`da.viz.image_plot` per panel, and :func:`da.viz.shared_colorbar` /
+    :func:`da.viz.panel_labels` for the shared scale and ``(a)``, ``(b)`` labels.
+    A single symmetric limit ``[-vlim, vlim]`` (99th percentile of ``|traj|``,
+    as before) is shared across panels so the colorbar is meaningful.
+    """
+    from da import viz
 
     if len(traj) == 0:
         raise ValueError("traj must contain at least one state")
+    if len(times) != len(traj):
+        raise ValueError("times and traj must have the same length")
     vlim = float(np.percentile(np.abs(traj), 99.0))
     nrows = int(np.ceil(len(traj) / ncols))
-    fig, axes = plt.subplots(
-        nrows,
-        ncols,
-        figsize=(3.1 * ncols, 3.15 * nrows),
-    )
-    axes = np.atleast_1d(axes).reshape(-1)
-    cmap = vorticity_cmap(cmap_name)
+    cmap = viz.vorticity_cmap(cmap_name)
+    extent = [0.0, length, 0.0, length]
 
-    im = None
-    for ax, omega, time in zip(axes, traj, times, strict=False):
-        im = ax.imshow(
-            omega,
-            extent=[0.0, length, 0.0, length],
-            origin="lower",
-            cmap=cmap,
-            vmin=-vlim,
-            vmax=vlim,
-            interpolation=interpolation,
-        )
-        ax.set_title(f"t={time:.3f}", fontweight="bold")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_aspect("equal")
+    with viz.style_context():
+        fig, axes = viz.multi_panel(nrows, ncols)
+        im = None
+        for ax, omega, time in zip(axes, traj, times, strict=False):
+            _, im = viz.image_plot(
+                omega,
+                ax=ax,
+                extent=extent,
+                cmap=cmap,
+                vmin=-vlim,
+                vmax=vlim,
+                interpolation=interpolation,
+            )
+            ax.set_title(f"t={time:.3f}")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
 
-    for ax in axes[len(traj) :]:
-        ax.axis("off")
-
-    fig.subplots_adjust(
-        left=0.06,
-        right=0.98,
-        top=0.93,
-        bottom=0.13,
-        wspace=0.30,
-        hspace=0.50,
-    )
-    fig.colorbar(
-        im,
-        ax=axes[: len(traj)].tolist(),
-        orientation="horizontal",
-        fraction=0.045,
-        pad=0.06,
-    )
+        used = axes[: len(traj)]
+        viz.hide_unused(axes, len(traj))
+        # Pass explicit labels so runs with more than 26 panels (--n-panels)
+        # continue past "(z)" as "(aa)", "(ab)", ... instead of failing.
+        viz.panel_labels(used, labels=[_panel_label(i) for i in range(len(used))])
+        viz.shared_colorbar(fig, im, used, label="vorticity")
     return fig
 
 
@@ -140,24 +119,52 @@ def diagnostics(model, traj):
 
 
 def plot_diagnostics(times, energies, enstrophies, palinstrophies):
-    import matplotlib.pyplot as plt
+    r"""Energy/enstrophy/palinstrophy curves, each normalized by its initial value.
+
+    With ``NSE2DTorus.energy`` / ``enstrophy`` / ``palinstrophy`` defined as
+    domain-averaged quadratic quantities on the torus,
+
+    .. math::
+
+        E(t) = \tfrac{1}{2}|\mathbb{T}^2|^{-1}\,\|u(t)\|_{L^2}^2,\quad
+        \Omega(t) = \tfrac{1}{2}|\mathbb{T}^2|^{-1}\,\|\omega(t)\|_{L^2}^2,\quad
+        P(t) = \tfrac{1}{2}|\mathbb{T}^2|^{-1}\,\|\nabla\omega(t)\|_{L^2}^2,
+
+    the plotted curves are the ratios :math:`E(t)/E(0)`, :math:`\Omega(t)/\Omega(0)`,
+    and :math:`P(t)/P(0)`; the constants cancel, so each curve is exactly the
+    squared-:math:`L^2`-norm ratio shown in the legend.
+    """
+    from da import viz
 
     if energies[0] == 0.0 or enstrophies[0] == 0.0 or palinstrophies[0] == 0.0:
         raise ValueError("initial diagnostics must be nonzero")
-    fig, ax = plt.subplots(figsize=(5.0, 3.5))
-    ax.plot(times, energies / energies[0], marker="o", label="energy")
-    ax.plot(times, enstrophies / enstrophies[0], marker="o", label="enstrophy")
-    ax.plot(
-        times,
-        palinstrophies / palinstrophies[0],
-        marker="o",
-        label="palinstrophy",
-    )
-    ax.set_xlabel("time")
-    ax.set_ylabel("normalized value")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    fig.subplots_adjust(left=0.14, right=0.96, top=0.94, bottom=0.14)
+    with viz.style_context():
+        fig, ax = viz.single_panel(width=5.0, height=3.5)
+        viz.line_plot(
+            times,
+            energies / energies[0],
+            ax=ax,
+            marker="o",
+            label=r"energy $\|u(t)\|_{L^2}^2 / \|u(0)\|_{L^2}^2$",
+        )
+        viz.line_plot(
+            times,
+            enstrophies / enstrophies[0],
+            ax=ax,
+            marker="o",
+            label=r"enstrophy $\|\omega(t)\|_{L^2}^2 / \|\omega(0)\|_{L^2}^2$",
+        )
+        viz.line_plot(
+            times,
+            palinstrophies / palinstrophies[0],
+            ax=ax,
+            marker="o",
+            label=r"palinstrophy $\|\nabla\omega(t)\|_{L^2}^2 / \|\nabla\omega(0)\|_{L^2}^2$",
+        )
+        ax.set_xlabel(r"time $t$")
+        ax.set_ylabel("ratio to initial value")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
     return fig
 
 

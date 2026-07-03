@@ -77,6 +77,46 @@ Python script の参考例:
 python examples/l96_etkf.py
 ```
 
+## Visualization
+
+図の作成は `da.viz` にまとめています。これは `KotaTakeda/research-design-system`
+の汎用作図レイヤ `research_figures`(publication 用 `mplstyle`、プロット種別ごとの
+プリミティブ、パネルレイアウト、原子的な保存ユーティリティ)を
+`da.viz._research_figures` に**ベンダリング(同梱)**した薄いアダプタです。
+共有 API を*利用*しつつ、`research-design-system` への実行時依存を持たずに
+`examples` extra を self-contained に保つ方針です(同梱物の由来は
+`src/da/viz/_research_figures/_VENDORED.md` を参照)。
+
+- 汎用プリミティブ・レイアウト・スタイル・保存関数は `da.viz` から
+  そのまま再エクスポートしています(`line_plot`, `image_plot`, `multi_panel`,
+  `shared_colorbar`, `panel_labels`, `save_png`, `style_context` など)。
+- 渦度など符号付き場のカラーマップは `da.viz.vorticity_cmap` を使います
+  (`seaborn` があれば `icefire`、無ければ `coolwarm` に自動フォールバックし、
+  `seaborn` は必須ではありません)。
+- カラーサイクルのデフォルトは `earth_muted_natural`
+  (`da.viz.DEFAULT_COLOR_CYCLE`)です。`style_context` / `single_panel` /
+  `multi_panel` などの `cycle=` 引数で他のパレット
+  (`viz.list_color_cycles()` 参照)や色リストに変更でき、`cycle=None` で
+  publication スタイル本来のサイクルに戻せます。
+- 渦度パネルや RMSE 曲線などドメイン固有の作図関数は `da_py` 側
+  (`da.visualize` や `examples/`)に置き、共有レイヤには数値・DA ロジックを
+  一切移しません。
+
+```py
+from da import viz
+
+with viz.style_context():
+    ax = viz.line_plot(times, rmse, label="ETKF")
+    ax.set_xlabel("time")
+    ax.set_ylabel("RMSE")
+    ax.legend()
+    viz.save_png(ax.figure, "data/rmse.png")
+```
+
+`matplotlib` + `numpy` があれば図を生成でき、`seaborn` は任意です。作例は
+`examples/l96_etkf.py`, `examples/nse2d_torus_forecast.py`,
+`examples/nse2d_etkf.py` を参照してください。
+
 ## OSSE settings
 
 ### Example 1

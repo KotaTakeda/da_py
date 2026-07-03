@@ -6,6 +6,7 @@ obsevation: linear and Gauss noise
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from da import viz
 from da.l96 import lorenz96
 from da.scheme import rk4
 from da.loss import loss_rms
@@ -84,10 +85,13 @@ for y_obs in tqdm(y):
 
 x_a = etkf.x
 
-# Plot
-fig, ax = plt.subplots(figsize=(10, 2))
-plot_loss((H@(x_true.T)).T, y, loss_rms, ax=ax, label='obs', lw=0.3)
-plot_loss(x_true, x_a, loss_rms, ax=ax, label='etkf', lw=0.3)
-ax.legend()
-# ax.set_ylim([0, 2])
+# Plot the observation vs. ETKF RMSE under the shared publication style.
+with viz.style_context():
+    fig, ax = viz.single_panel(width=10, height=2)
+    plot_loss((H@(x_true.T)).T, y, loss_rms, ax=ax, label='obs', lw=0.3)
+    plot_loss(x_true, x_a, loss_rms, ax=ax, label='etkf', lw=0.3)
+    ax.set_xlabel('assimilation step')
+    ax.set_ylabel('RMSE')
+    ax.legend()
+    # ax.set_ylim([0, 2])
 plt.show()
