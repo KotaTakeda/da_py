@@ -119,26 +119,50 @@ def diagnostics(model, traj):
 
 
 def plot_diagnostics(times, energies, enstrophies, palinstrophies):
-    """Normalized energy/enstrophy/palinstrophy curves via the shared line plot."""
+    r"""Energy/enstrophy/palinstrophy curves, each normalized by its initial value.
+
+    With ``NSE2DTorus.energy`` / ``enstrophy`` / ``palinstrophy`` defined as
+    domain-averaged quadratic quantities on the torus,
+
+    .. math::
+
+        E(t) = \tfrac{1}{2}|\mathbb{T}^2|^{-1}\,\|u(t)\|_{L^2}^2,\quad
+        \Omega(t) = \tfrac{1}{2}|\mathbb{T}^2|^{-1}\,\|\omega(t)\|_{L^2}^2,\quad
+        P(t) = \tfrac{1}{2}|\mathbb{T}^2|^{-1}\,\|\nabla\omega(t)\|_{L^2}^2,
+
+    the plotted curves are the ratios :math:`E(t)/E(0)`, :math:`\Omega(t)/\Omega(0)`,
+    and :math:`P(t)/P(0)`; the constants cancel, so each curve is exactly the
+    squared-:math:`L^2`-norm ratio shown in the legend.
+    """
     from da import viz
 
     if energies[0] == 0.0 or enstrophies[0] == 0.0 or palinstrophies[0] == 0.0:
         raise ValueError("initial diagnostics must be nonzero")
     with viz.style_context():
         fig, ax = viz.single_panel(width=5.0, height=3.5)
-        viz.line_plot(times, energies / energies[0], ax=ax, marker="o", label="energy")
         viz.line_plot(
-            times, enstrophies / enstrophies[0], ax=ax, marker="o", label="enstrophy"
+            times,
+            energies / energies[0],
+            ax=ax,
+            marker="o",
+            label=r"energy $\|u(t)\|_{L^2}^2 / \|u(0)\|_{L^2}^2$",
+        )
+        viz.line_plot(
+            times,
+            enstrophies / enstrophies[0],
+            ax=ax,
+            marker="o",
+            label=r"enstrophy $\|\omega(t)\|_{L^2}^2 / \|\omega(0)\|_{L^2}^2$",
         )
         viz.line_plot(
             times,
             palinstrophies / palinstrophies[0],
             ax=ax,
             marker="o",
-            label="palinstrophy",
+            label=r"palinstrophy $\|\nabla\omega(t)\|_{L^2}^2 / \|\nabla\omega(0)\|_{L^2}^2$",
         )
-        ax.set_xlabel("time")
-        ax.set_ylabel("normalized value")
+        ax.set_xlabel(r"time $t$")
+        ax.set_ylabel("ratio to initial value")
         ax.legend()
         ax.grid(True, alpha=0.3)
     return fig
