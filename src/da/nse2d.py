@@ -218,6 +218,25 @@ class NSE2DTorus:
         wavenumber = self._kolmogorov_wavenumber(mode)
         return -amplitude * wavenumber * np.cos(wavenumber * y)
 
+    def diagonal_vorticity_forcing(self, mode=(5, 5), amplitude=1.0):
+        """Return the Kelly-style diagonal vorticity forcing ``curl(grad^perp Phi)``.
+
+        Kelly, Law & Stuart (2014) force the velocity equation with
+        ``f = grad^perp Phi``, ``Phi proportional to cos(k_f . x)`` with
+        ``k_f = (5, 5)``. The corresponding vorticity forcing is
+        ``F_omega = curl f = Laplacian Phi = -|k|^2 Phi``. ``amplitude`` is the
+        magnitude of the *velocity* forcing, ``|f| = |k| |Phi|``, so
+        ``F_omega = -|k| * amplitude * cos(k . x)`` (Kelly use ``|f| ~ 10``).
+        """
+        x, y = self.grid()
+        mx, my = mode
+        kx = 2 * np.pi * mx / self.config.length
+        ky = 2 * np.pi * my / self.config.length
+        k_norm = float(np.hypot(kx, ky))
+        if k_norm == 0.0:
+            raise ValueError("mode must be nonzero")
+        return -amplitude * k_norm * np.cos(kx * x + ky * y)
+
     def fft(self, field):
         return np.fft.fft2(self._as_state(field))
 

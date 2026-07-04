@@ -45,6 +45,20 @@ def test_full_mode_observation_matrix_shape(model):
     assert H.shape == (model.spectral_state_dim, model.state_dim)
 
 
+def test_diagonal_vorticity_forcing(model):
+    # F_omega = -|k| * amplitude * cos(k . x) for f = grad^perp Phi with
+    # |f| = amplitude: mean zero, correct peak magnitude, correct value at 0.
+    amplitude, mode = 10.0, (2, 2)
+    F = model.diagonal_vorticity_forcing(mode=mode, amplitude=amplitude)
+    kx = 2 * np.pi * mode[0] / model.config.length
+    ky = 2 * np.pi * mode[1] / model.config.length
+    k_norm = np.hypot(kx, ky)
+    assert F.shape == model.shape
+    assert abs(float(F.mean())) < 1e-12
+    np.testing.assert_allclose(F[0, 0], -amplitude * k_norm, rtol=1e-12)
+    np.testing.assert_allclose(np.abs(F).max(), amplitude * k_norm, rtol=1e-10)
+
+
 def test_low_mode_etkf_beats_free_evolution(model):
     # Tiny end-to-end twin experiment: assimilating low-mode observations
     # must track the truth better than free ensemble evolution.

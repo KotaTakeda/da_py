@@ -54,22 +54,45 @@ import numpy as np
 
 from da.etkf import ETKF
 from da.loss import loss_rms
-from da.nse2d import NSE2DTorus, inubushi_caulfield_config
+from da.nse2d import NSE2DConfig, NSE2DTorus, inubushi_caulfield_config
 from da.po import PO
 
 CASES = ("free", "full", "low", "high")
 
 
 def build_model(args):
-    cfg = inubushi_caulfield_config(
-        nx=args.nx,
-        ny=args.ny,
-        viscosity=args.viscosity,
-        drag=args.drag,
-        forcing_mode=args.forcing_mode,
-        forcing_amplitude=args.forcing_amplitude,
-        length=2 * np.pi,
-    )
+    if args.forcing == "diagonal":
+        # Kelly-style forcing f = grad^perp Phi, Phi ~ cos(k_f . x) with
+        # k_f = (mode, mode); amplitude is the velocity-forcing magnitude.
+        base = NSE2DConfig(
+            nx=args.nx,
+            ny=args.ny,
+            viscosity=args.viscosity,
+            drag=args.drag,
+            length=2 * np.pi,
+        )
+        helper = NSE2DTorus(base)
+        cfg = NSE2DConfig(
+            nx=args.nx,
+            ny=args.ny,
+            viscosity=args.viscosity,
+            drag=args.drag,
+            length=2 * np.pi,
+            forcing=helper.diagonal_vorticity_forcing(
+                mode=(args.forcing_mode, args.forcing_mode),
+                amplitude=args.forcing_amplitude,
+            ),
+        )
+    else:
+        cfg = inubushi_caulfield_config(
+            nx=args.nx,
+            ny=args.ny,
+            viscosity=args.viscosity,
+            drag=args.drag,
+            forcing_mode=args.forcing_mode,
+            forcing_amplitude=args.forcing_amplitude,
+            length=2 * np.pi,
+        )
     return NSE2DTorus(cfg)
 
 
@@ -290,6 +313,13 @@ def parse_args():
                         help="white-noise std for --init perturb")
     parser.add_argument("--viscosity", type=float, default=None)
     parser.add_argument("--drag", type=float, default=None)
+    parser.add_argument(
+        "--forcing",
+        choices=["kolmogorov", "diagonal"],
+        default="kolmogorov",
+        help="kolmogorov: single-mode sin(k y) forcing; diagonal: Kelly's "
+        "grad^perp cos(k_f . x) forcing with k_f = (mode, mode)",
+    )
     parser.add_argument("--forcing-mode", type=int, default=None)
     parser.add_argument("--forcing-amplitude", type=float, default=None)
     parser.add_argument("--seed", type=int, default=7)
