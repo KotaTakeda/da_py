@@ -41,7 +41,7 @@ grid size), observed every ``--obs-interval`` model steps with iid
 N(0, gamma^2) noise. Diagnostics per assimilation cycle: relative error
 ``relerr = ||mean - truth||_2 / ||truth||_2``, RMSE, ensemble spread, and the
 observed-/unobserved-mode error split via the #12 projections. Outputs go to
-``data/nse2d_kelly_etkf/``.
+``data/nse2d_partial_obs_enkf/``.
 
 This benchmark remains **qualitative**: it is not an exact reproduction of
 Kelly et al.'s parameters (see the open tasks in issue #25).
@@ -323,7 +323,7 @@ def parse_args():
     parser.add_argument("--forcing-mode", type=int, default=None)
     parser.add_argument("--forcing-amplitude", type=float, default=None)
     parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--output-dir", default="data/nse2d_kelly_etkf")
+    parser.add_argument("--output-dir", default="data/nse2d_partial_obs_enkf")
     args = parser.parse_args()
 
     # The kelly preset is the validated Fig.4/Fig.5 configuration from issue
