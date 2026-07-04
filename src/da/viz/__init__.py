@@ -38,8 +38,6 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-import numpy as np
-
 # Re-export the vendored, domain-independent figure API unchanged so callers
 # can do ``from da import viz; viz.line_plot(...)`` without reaching into the
 # private vendored package. The exported names are derived from the vendored
@@ -65,30 +63,19 @@ def style_context(name="publication", extra_rc=None, *, cycle=DEFAULT_COLOR_CYCL
     return _research_figures.style_context(name, extra_rc, cycle=cycle)
 
 
-def _apply_cycle(fig_axes, cycle):
-    # The vendored setup_figure re-enters its own publication style context at
-    # figure creation, which resets axes.prop_cycle from the style file; apply
-    # the requested cycle per axes afterwards so it survives that nesting.
-    fig, axes = fig_axes
-    if cycle is not None:
-        for ax in np.ravel(axes):
-            _research_figures.set_color_cycle(cycle, ax=ax)
-    return fig, axes
-
-
 def setup_figure(*, cycle=DEFAULT_COLOR_CYCLE, **kwargs):
     """:func:`research_figures.setup_figure` with da_py's default color cycle."""
-    return _apply_cycle(_research_figures.setup_figure(**kwargs), cycle)
+    return _research_figures.setup_figure(cycle=cycle, **kwargs)
 
 
 def single_panel(*, cycle=DEFAULT_COLOR_CYCLE, **kwargs):
     """:func:`research_figures.single_panel` with da_py's default color cycle."""
-    return _apply_cycle(_research_figures.single_panel(**kwargs), cycle)
+    return _research_figures.single_panel(cycle=cycle, **kwargs)
 
 
 def multi_panel(nrows, ncols, *, cycle=DEFAULT_COLOR_CYCLE, **kwargs):
     """:func:`research_figures.multi_panel` with da_py's default color cycle."""
-    return _apply_cycle(_research_figures.multi_panel(nrows, ncols, **kwargs), cycle)
+    return _research_figures.multi_panel(nrows, ncols, cycle=cycle, **kwargs)
 
 
 @lru_cache(maxsize=None)
