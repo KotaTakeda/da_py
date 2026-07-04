@@ -89,6 +89,7 @@ def setup_figure(
     height: float | None = None,
     figsize: tuple[float, float] | None = None,
     style: str | None = "publication",
+    cycle=None,
     **subplots_kwargs,
 ):
     """Create a figure and axes using the publication style.
@@ -101,6 +102,12 @@ def setup_figure(
         Explicit ``(width, height)``. Takes precedence over ``width``/``height``.
     style:
         Bundled style name to apply, or ``None`` to leave the current style.
+    cycle:
+        Color cycle for the created axes: a palette name from
+        :data:`~research_figures.palettes.COLOR_CYCLES` or an explicit list of
+        colors. With a ``style`` it is applied inside the style context (so it
+        wins over the style file's own cycle); with ``style=None`` it is set
+        per created axes. ``None`` keeps the active cycle.
     **subplots_kwargs:
         Forwarded to :func:`matplotlib.pyplot.subplots` (``nrows``, ``ncols``,
         ``sharex``, ``gridspec_kw``, ...).
@@ -115,6 +122,12 @@ def setup_figure(
         figsize = (width or base_w, height or base_h)
 
     if style is not None:
-        with style_context(style):
+        with style_context(style, cycle=cycle):
             return plt.subplots(figsize=figsize, **subplots_kwargs)
-    return plt.subplots(figsize=figsize, **subplots_kwargs)
+    fig, axes = plt.subplots(figsize=figsize, **subplots_kwargs)
+    if cycle is not None:
+        # fig.axes is exactly the axes just created, whatever shape
+        # plt.subplots returned them in.
+        for ax in fig.axes:
+            set_color_cycle(cycle, ax=ax)
+    return fig, axes
