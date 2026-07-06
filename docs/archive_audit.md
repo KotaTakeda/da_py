@@ -14,7 +14,7 @@ examples (issue #38). Each asset is classified as one of:
 | Asset | Content | Key parameters | Visualizations | Class |
 | --- | --- | --- | --- | --- |
 | `l63.ipynb` | Nature-run generation, error growth | `dt=0.01`, `obs_per=12` (`Dt=0.12`), long run | 3D trajectory, per-component time series, error growth | port |
-| `l63_etkf.ipynb` | ETKF benchmark and eigenvalue study | obs var `64`, `m=10`, `alpha=1.0`, `H=I`, `P0=38I` | RMSE curves, forecast/analysis eigenvalues | reuse |
+| `l63_etkf.ipynb` | ETKF benchmark and eigenvalue study | obs var `8` (`r0 = sqrt(8)`), `m=10`, `alpha=1.0`, `H=I`, `P0=38I` | RMSE curves, forecast/analysis eigenvalues | reuse |
 | `l63_pf.ipynb` | PF with three resampling schemes | `obs_per=6`, obs var `1.0`, `m=60`, additive inflation `0.1` | RMSE per resampling scheme | reuse |
 | `l63_etpf.ipynb` | ETPF (optimal-transport resampling) | obs var `1.0`, `m=100`, additive inflation `0.4` | RMSE curves, particle clouds | reuse |
 | `l63_po.ipynb` | Perturbed-observation EnKF, partial obs | `obs_per=3`, obs var `0.1`, `m=2`, `H=[1,0,0]` | RMSE, covariance evolution | port |
@@ -27,7 +27,7 @@ examples (issue #38). Each asset is classified as one of:
 | Asset | Content | Key parameters | Visualizations | Class |
 | --- | --- | --- | --- | --- |
 | `l96.ipynb` | Nature run, Lyapunov, Hovmöller | `J=40`, `F=8`, `dt=0.01`, `obs_per=5` | time series, Hovmöller (space-time) | port |
-| `l96_etkf.ipynb` | ETKF inflation comparison | obs var `1.0`, `m=25`, `alpha=1.0` vs `1.2`, `H=I` | RMSE curves, Hovmöller of truth/obs/analysis | reuse |
+| `l96_etkf.ipynb` | ETKF inflation comparison | obs var `1.0`, `m=25`, `alpha=1.0` vs `1.2`, partial obs (every 3rd component unobserved) | RMSE curves, Hovmöller of truth/obs/analysis | reuse |
 | `l96_etkf.py` | ETKF script, modern API | `m=20`, `alpha=1.1`, spin-up | publication-style RMSE (`da.viz`) | reuse |
 | `l96_letkf.ipynb` | LETKF hyperparameter sweep | `m=8-20`, `alpha≈1.03`, `c=5-10`, Gaspari-Cohn | RMSE, `alpha`-`c` and `m`-`c` heatmaps | reuse |
 | `l96_pf.ipynb` | Large-particle PF | `dt=0.1`, `m=1000`, additive inflation `0.05` | RMSE, ensemble evolution | reference |
