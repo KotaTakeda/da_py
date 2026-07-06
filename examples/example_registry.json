@@ -72,7 +72,7 @@
       "parameters": {
         "state_dim": 40,
         "observation": "full state",
-        "ensemble_size": 12,
+        "ensemble_size": 20,
         "cycles": 15
       }
     },
@@ -102,8 +102,8 @@
       "parameters": {
         "grid": "16x16",
         "state": "packed rfft2 vorticity",
-        "observation": "low spectral modes",
-        "ensemble_size": 8,
+        "observation": "low spectral modes (kmax=4)",
+        "ensemble_size": 32,
         "cycles": 3
       }
     }

@@ -55,8 +55,16 @@ def rmse(x, truth):
     return float(np.sqrt(np.mean((np.asarray(x) - np.asarray(truth)) ** 2)))
 
 
-def print_result(name, rmses, **metadata):
+def obs_noise_scale(R):
+    """Root-mean-square observation-error std, sqrt(tr(R) / N_y)."""
+    R = np.asarray(R)
+    return float(np.sqrt(np.trace(R) / R.shape[0]))
+
+
+def print_result(name, rmses, *, R=None, **metadata):
     print(name)
     for key, value in metadata.items():
         print(f"{key}: {value}")
+    if R is not None:
+        print(f"observation noise scale: {obs_noise_scale(R):.6f}")
     print(f"final analysis RMSE: {rmses[-1]:.6f}")

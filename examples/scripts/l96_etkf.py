@@ -13,19 +13,21 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser, cycles=15)
     parser.add_argument("--dimension", type=int, default=40)
-    parser.add_argument("--ensemble-size", type=int, default=12)
+    parser.add_argument("--ensemble-size", type=int, default=20)
+    parser.add_argument("--obs-noise-variance", type=float, default=1.0)
+    parser.add_argument("--inflation", type=float, default=1.05)
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     H = np.eye(args.dimension)
-    R = np.eye(args.dimension)
+    R = args.obs_noise_variance * np.eye(args.dimension)
     x0 = 8.0 * np.ones(args.dimension)
     x0[0] += 0.01
     truth, obs, rng = truth_and_observations(l96_step, x0, H, R, args)
     X0 = ensemble_around(rng, truth[0], args.ensemble_size, 0.5)
-    filt = ETKF(l96_step, H, R, alpha=1.05)
+    filt = ETKF(l96_step, H, R, alpha=args.inflation)
     filt.initialize(X0)
 
     rmses = [rmse(filt.X.mean(axis=0), truth[0])]
@@ -35,7 +37,7 @@ def main():
         filt.update(obs[k])
         rmses.append(rmse(filt.X.mean(axis=0), truth[k]))
 
-    print_result("L96 ETKF benchmark", rmses, cycles=args.cycles, ensemble_size=args.ensemble_size)
+    print_result("L96 ETKF benchmark", rmses, R=R, cycles=args.cycles, ensemble_size=args.ensemble_size)
 
 
 if __name__ == "__main__":

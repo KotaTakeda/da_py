@@ -13,16 +13,18 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser, cycles=20)
     parser.add_argument("--particles", type=int, default=40)
+    parser.add_argument("--obs-noise-variance", type=float, default=2.0)
+    parser.add_argument("--add-inflation", type=float, default=0.02)
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     H = np.eye(3)
-    R = 2.0 * np.eye(3)
+    R = args.obs_noise_variance * np.eye(3)
     truth, obs, rng = truth_and_observations(l63_step, np.array([1.0, 1.0, 1.0]), H, R, args)
     X0 = ensemble_around(rng, truth[0] + np.array([1.0, -1.0, 0.5]), args.particles, 0.8)
-    filt = ParticleFilter(l63_step, lambda x: H @ x, R, add_inflation=0.02, N_thr=0.5)
+    filt = ParticleFilter(l63_step, lambda x: H @ x, R, add_inflation=args.add_inflation, N_thr=0.5)
     filt.initialize(X0)
 
     rmses = [rmse(filt.W @ filt.X, truth[0])]
@@ -32,7 +34,7 @@ def main():
         filt.update(obs[k])
         rmses.append(rmse(filt.W @ filt.X, truth[k]))
 
-    print_result("L63 PF benchmark", rmses, cycles=args.cycles, particles=args.particles)
+    print_result("L63 PF benchmark", rmses, R=R, cycles=args.cycles, particles=args.particles)
 
 
 if __name__ == "__main__":

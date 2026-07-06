@@ -24,7 +24,20 @@ python examples/scripts/nse2d_etkf.py
 ```
 
 The scripts use small default settings intended for smoke tests and benchmark
-orientation, not publication-quality experiments.
+orientation, not publication-quality experiments. Major benchmark parameters
+(observation noise, inflation, ensemble/particle size, cycles) are exposed as
+CLI options; run a script with `--help` for the full list.
+
+## Notebooks
+
+Each representative example has a tutorial notebook under
+`examples/notebooks/` that follows `docs/notebook_spec.md`: it states the
+model, observation model, and filter update in TeX (symbols defined in
+`docs/notation.md`), visualizes truth/observations and the analysis, and
+plots the analysis RMSE against the observation-noise scale
+$\sigma_{\mathrm{obs}} = \sqrt{\operatorname{tr}(R)/N_y}$. Notebooks use
+longer runs than the smoke-test scripts; each completes well within the
+~10 minute budget.
 
 ## Archive
 
