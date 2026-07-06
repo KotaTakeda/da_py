@@ -6,7 +6,7 @@ import numpy as np
 
 from da.letkf import LETKF
 
-from _common import add_common_args, ensemble_around, l96_step, print_result, rmse, truth_and_observations
+from _common import add_common_args, attractor_ensemble, l96_step, print_result, rmse, truth_and_observations
 
 
 def parse_args():
@@ -27,7 +27,7 @@ def main():
     x0 = 8.0 * np.ones(args.dimension)
     x0[0] += 0.01
     truth, obs, rng = truth_and_observations(l96_step, x0, H, R, args)
-    X0 = ensemble_around(rng, truth[0], args.ensemble_size, 0.5)
+    X0 = attractor_ensemble(l96_step, rng, x0, args.dt, args.ensemble_size)
     filt = LETKF(l96_step, H, R, alpha=args.inflation, c=args.localization_radius)
     filt.initialize(X0)
 

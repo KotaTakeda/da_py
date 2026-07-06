@@ -35,9 +35,9 @@ def advance(step: Callable[[np.ndarray, float], np.ndarray], x, dt, n_steps):
     return state
 
 
-def truth_and_observations(step, x0, H, R, args):
+def truth_and_observations(step, x0, H, R, args, *, spinup_steps=500):
     rng = np.random.default_rng(args.seed)
-    x = np.asarray(x0, dtype=float).copy()
+    x = advance(step, x0, args.dt, spinup_steps)
     truth = [x.copy()]
     obs = [H @ x + rng.multivariate_normal(np.zeros(H.shape[0]), R)]
     for _ in range(args.cycles):
@@ -49,6 +49,17 @@ def truth_and_observations(step, x0, H, R, args):
 
 def ensemble_around(rng, center, size, spread):
     return np.asarray(center) + spread * rng.standard_normal((size, len(center)))
+
+
+def attractor_ensemble(step, rng, x0, dt, size, *, spinup_steps=500, sample_interval=50):
+    """Draw an initial ensemble from a long model trajectory on the attractor."""
+    x = advance(step, x0, dt, spinup_steps)
+    pool = []
+    for _ in range(4 * size):
+        x = advance(step, x, dt, sample_interval)
+        pool.append(x.copy())
+    idx = rng.choice(len(pool), size=size, replace=False)
+    return np.asarray(pool)[idx]
 
 
 def rmse(x, truth):

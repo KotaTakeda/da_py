@@ -6,7 +6,7 @@ import numpy as np
 
 from da.pf import ParticleFilter
 
-from _common import add_common_args, ensemble_around, l63_step, print_result, rmse, truth_and_observations
+from _common import add_common_args, attractor_ensemble, l63_step, print_result, rmse, truth_and_observations
 
 
 def parse_args():
@@ -23,7 +23,7 @@ def main():
     H = np.eye(3)
     R = args.obs_noise_variance * np.eye(3)
     truth, obs, rng = truth_and_observations(l63_step, np.array([1.0, 1.0, 1.0]), H, R, args)
-    X0 = ensemble_around(rng, truth[0] + np.array([1.0, -1.0, 0.5]), args.particles, 0.8)
+    X0 = attractor_ensemble(l63_step, rng, np.array([1.0, 1.0, 1.0]), args.dt, args.particles)
     filt = ParticleFilter(l63_step, lambda x: H @ x, R, add_inflation=args.add_inflation, N_thr=0.5)
     filt.initialize(X0)
 

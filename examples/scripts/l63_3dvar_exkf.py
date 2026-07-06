@@ -7,7 +7,7 @@ import numpy as np
 from da.exkf import ExKF
 from da.var3d import Var3D
 
-from _common import add_common_args, advance, l63_step, print_result, rmse
+from _common import add_common_args, advance, attractor_ensemble, l63_step, print_result, rmse
 
 
 def parse_args():
@@ -24,8 +24,8 @@ def main():
     H = np.eye(3)
     R = args.obs_noise_variance * np.eye(3)
     B = args.background_variance * np.eye(3)
-    truth = np.array([1.0, 1.0, 1.0])
-    x0 = truth + np.array([2.0, -1.0, 1.5])
+    truth = advance(l63_step, np.array([1.0, 1.0, 1.0]), args.dt, 500)
+    x0 = attractor_ensemble(l63_step, rng, truth, args.dt, 1)[0]
 
     var3d = Var3D(lambda x, dt: advance(l63_step, x, dt, args.obs_interval), H, R)
     var3d.initialize(x0, B)
