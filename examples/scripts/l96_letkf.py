@@ -6,7 +6,7 @@ import numpy as np
 
 from da.letkf import LETKF
 
-from _common import add_common_args, ensemble_around, l96_step, print_result, rmse, truth_and_observations
+from _common import add_common_args, attractor_ensemble, l96_step, print_result, rmse, truth_and_observations
 
 
 def parse_args():
@@ -15,18 +15,20 @@ def parse_args():
     parser.add_argument("--dimension", type=int, default=40)
     parser.add_argument("--ensemble-size", type=int, default=12)
     parser.add_argument("--localization-radius", type=float, default=6.0)
+    parser.add_argument("--obs-noise-variance", type=float, default=1.0)
+    parser.add_argument("--inflation", type=float, default=1.05)
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     H = np.eye(args.dimension)
-    R = np.eye(args.dimension)
+    R = args.obs_noise_variance * np.eye(args.dimension)
     x0 = 8.0 * np.ones(args.dimension)
     x0[0] += 0.01
     truth, obs, rng = truth_and_observations(l96_step, x0, H, R, args)
-    X0 = ensemble_around(rng, truth[0], args.ensemble_size, 0.5)
-    filt = LETKF(l96_step, H, R, alpha=1.05, c=args.localization_radius)
+    X0 = attractor_ensemble(l96_step, rng, x0, args.dt, args.ensemble_size)
+    filt = LETKF(l96_step, H, R, alpha=args.inflation, c=args.localization_radius)
     filt.initialize(X0)
 
     rmses = [rmse(filt.X.mean(axis=0), truth[0])]
@@ -36,7 +38,7 @@ def main():
         filt.update(obs[k])
         rmses.append(rmse(filt.X.mean(axis=0), truth[k]))
 
-    print_result("L96 LETKF benchmark", rmses, cycles=args.cycles, ensemble_size=args.ensemble_size)
+    print_result("L96 LETKF benchmark", rmses, R=R, cycles=args.cycles, ensemble_size=args.ensemble_size)
 
 
 if __name__ == "__main__":
