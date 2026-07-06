@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "examples": [
+    {
+      "id": "l63_3dvar_exkf",
+      "model": "Lorenz63",
+      "filter": "3DVar / ExKF",
+      "script": "examples/scripts/l63_3dvar_exkf.py",
+      "notebook": "examples/notebooks/l63_3dvar_exkf.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative",
+      "parameters": {
+        "state_dim": 3,
+        "observation": "full state",
+        "observation_error_variance": 2.0,
+        "cycles": 20
+      }
+    },
+    {
+      "id": "l63_pf",
+      "model": "Lorenz63",
+      "filter": "Particle Filter",
+      "script": "examples/scripts/l63_pf.py",
+      "notebook": "examples/notebooks/l63_pf.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative",
+      "parameters": {
+        "state_dim": 3,
+        "observation": "full state",
+        "particles": 40,
+        "cycles": 20
+      }
+    },
+    {
+      "id": "l63_etkf",
+      "model": "Lorenz63",
+      "filter": "ETKF",
+      "script": "examples/scripts/l63_etkf.py",
+      "notebook": "examples/notebooks/l63_etkf.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative",
+      "parameters": {
+        "state_dim": 3,
+        "observation": "full state",
+        "ensemble_size": 12,
+        "cycles": 20
+      }
+    },
+    {
+      "id": "l63_etpf",
+      "model": "Lorenz63",
+      "filter": "ETPF",
+      "script": "examples/scripts/l63_etpf.py",
+      "notebook": "examples/notebooks/l63_etpf.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative_optional",
+      "parameters": {
+        "state_dim": 3,
+        "observation": "full state",
+        "particles": 40,
+        "optional_dependency": "POT"
+      }
+    },
+    {
+      "id": "l96_etkf",
+      "model": "Lorenz96",
+      "filter": "ETKF",
+      "script": "examples/scripts/l96_etkf.py",
+      "notebook": "examples/notebooks/l96_etkf.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative",
+      "parameters": {
+        "state_dim": 40,
+        "observation": "full state",
+        "ensemble_size": 12,
+        "cycles": 15
+      }
+    },
+    {
+      "id": "l96_letkf",
+      "model": "Lorenz96",
+      "filter": "LETKF",
+      "script": "examples/scripts/l96_letkf.py",
+      "notebook": "examples/notebooks/l96_letkf.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative",
+      "parameters": {
+        "state_dim": 40,
+        "observation": "full state",
+        "ensemble_size": 12,
+        "localization_radius": 6.0
+      }
+    },
+    {
+      "id": "nse2d_etkf",
+      "model": "NSE2D",
+      "filter": "ETKF",
+      "script": "examples/scripts/nse2d_etkf.py",
+      "notebook": "examples/notebooks/nse2d_etkf.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative",
+      "parameters": {
+        "grid": "16x16",
+        "state": "packed rfft2 vorticity",
+        "observation": "low spectral modes",
+        "ensemble_size": 8,
+        "cycles": 3
+      }
+    }
+  ],
+  "future": [
+    "QMC convergence examples",
+    "Henon examples",
+    "L96 particle filter",
+    "NSE2D partial-observation and synchronization examples",
+    "GitHub Pages notebook tutorial embedding"
+  ]
+}
