@@ -433,7 +433,7 @@ def test_dealias_option_is_validated():
 
 def test_nse2d_etkf_example_smoke():
     result = subprocess.run(
-        [sys.executable, "examples/nse2d_etkf.py"],
+        [sys.executable, "examples/scripts/nse2d_etkf.py"],
         check=True,
         capture_output=True,
         text=True,

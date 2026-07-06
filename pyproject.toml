@@ -47,3 +47,6 @@ where = ["src"]
 
 [tool.black]
 line-length = 88
+
+[tool.ruff]
+extend-exclude = ["examples/archive"]

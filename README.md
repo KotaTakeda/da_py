@@ -39,6 +39,7 @@ pip install -e ".[dev]"
 
 ```py
 from da.etkf import ETKF
+from da.exkf import ExKF
 from da.pf import ParticleFilter
 from da.l63 import lorenz63
 from da.l96 import lorenz96
@@ -58,24 +59,32 @@ This convention applies to `ETKF`, `LETKF`, and the non-additive `PO` update. In
 
 ## Examples
 
-`examples/` 以下に Jupyter Notebook と一部 Python script があります。
+`examples/` は代表例を次の3層に整理しています。
 
-> Note: examples は開発・実験時の参考コードを含みます。最新バージョンの API と完全に同期しているとは限らないため、実行前に import や引数を確認してください。
+- `examples/scripts/`: CI で実行可能な軽量 benchmark script。
+- `examples/notebooks/`: 数式説明つきの最小 tutorial notebook。
+- `examples/archive/`: 旧 notebook/script/PDF/配列データの退避先。研究履歴として保持しますが、現 API との同期対象ではありません。
 
-主な参考例:
+代表例メタデータの運用上の正本は `examples/example_registry.json` です。数式記号は `docs/notation.md`、代表設定一覧は `docs/examples.md` を参照してください。
 
-- `examples/l63_etkf.ipynb`
-- `examples/l63_pf.ipynb`
-- `examples/l96_etkf.ipynb`
-- `examples/l96_letkf.ipynb`
-- `examples/l96_pf.ipynb`
-- `examples/qmc.ipynb`
+代表 script:
 
-Python script の参考例:
+- `examples/scripts/l63_3dvar_exkf.py`
+- `examples/scripts/l63_pf.py`
+- `examples/scripts/l63_etkf.py`
+- `examples/scripts/l63_etpf.py` (`POT` がない環境では skip)
+- `examples/scripts/l96_etkf.py`
+- `examples/scripts/l96_letkf.py`
+- `examples/scripts/nse2d_etkf.py`
 
 ```sh
-python examples/l96_etkf.py
+python examples/scripts/l63_etkf.py
+python examples/scripts/l96_letkf.py
+python examples/scripts/nse2d_etkf.py
 ```
+
+将来的には QMC、Henon、L96 PF、NSE2D partial-observation/synchronization、
+GitHub Pages へ埋め込む notebook tutorial を整備する予定です。
 
 ## Visualization
 
@@ -114,14 +123,13 @@ with viz.style_context():
 ```
 
 `matplotlib` + `numpy` があれば図を生成でき、`seaborn` は任意です。作例は
-`examples/l96_etkf.py`, `examples/nse2d_torus_forecast.py`,
-`examples/nse2d_etkf.py` を参照してください。
+`examples/scripts/l96_etkf.py`, `examples/scripts/nse2d_etkf.py` を参照してください。
 
 2D NSE の DA 検証は段階的に行います。ETKF の前段として、低モード観測のみで
-同期するか(直接挿入/ナッジング)を `examples/nse2d_synchronization.py` で
+同期するか(直接挿入/ナッジング)を `examples/archive/nse2d_synchronization.py` で
 検証できます(`NSE2DTorus.project_low_modes` / `project_high_modes` を使用)。
 その後段の Kelly 型 ETKF ベンチマーク(自由発展/全モード/低モード/
-高モードのみ観測の比較)は `examples/nse2d_partial_obs_enkf.py` を参照してください。
+高モードのみ観測の比較)は `examples/archive/nse2d_partial_obs_enkf.py` を参照してください。
 
 ## OSSE settings
 
