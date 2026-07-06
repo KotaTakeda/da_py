@@ -100,11 +100,14 @@
       "docs": "docs/examples.md",
       "status": "representative",
       "parameters": {
-        "grid": "16x16",
+        "grid": "32x32",
         "state": "packed rfft2 vorticity",
         "observation": "low spectral modes (kmax=4)",
-        "ensemble_size": 32,
-        "cycles": 3
+        "viscosity": 0.03,
+        "drag": 0.0,
+        "ensemble_size": 64,
+        "inflation": 1.1,
+        "cycles": 60
       }
     }
   ],
