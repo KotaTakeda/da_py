@@ -16,7 +16,7 @@ def parse_args():
     add_common_args(parser, cycles=20)
     parser.add_argument("--particles", type=int, default=40)
     parser.add_argument("--obs-noise-variance", type=float, default=2.0)
-    parser.add_argument("--add-inflation", type=float, default=0.02)
+    parser.add_argument("--add-inflation", type=float, default=0.1)
     return parser.parse_args()
 
 

@@ -51,15 +51,22 @@ def ensemble_around(rng, center, size, spread):
     return np.asarray(center) + spread * rng.standard_normal((size, len(center)))
 
 
-def attractor_ensemble(step, rng, x0, dt, size, *, spinup_steps=500, sample_interval=50):
-    """Draw an initial ensemble from a long model trajectory on the attractor."""
+def attractor_ensemble(step, rng, x0, dt, size, *, spinup_steps=2000, sample_interval=25, pool_size=1000):
+    """Draw an initial ensemble from the model's attractor (climatology).
+
+    The pool spans a long trajectory (``pool_size * sample_interval`` steps after
+    spin-up) so the drawn members approximate an i.i.d. climatological sample. The
+    ensemble mean therefore sits near the attractor centroid rather than tracking a
+    particular truth state, giving an initial RMSE on the order of the attractor
+    size that the filter must then reduce.
+    """
     x = advance(step, x0, dt, spinup_steps)
-    pool = []
-    for _ in range(4 * size):
+    pool = np.empty((pool_size, len(np.asarray(x, dtype=float))))
+    for i in range(pool_size):
         x = advance(step, x, dt, sample_interval)
-        pool.append(x.copy())
-    idx = rng.choice(len(pool), size=size, replace=False)
-    return np.asarray(pool)[idx]
+        pool[i] = x
+    idx = rng.choice(pool_size, size=size, replace=False)
+    return pool[idx]
 
 
 def rmse(x, truth):
