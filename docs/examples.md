@@ -31,7 +31,7 @@ CLI options; run a script with `--help` for the full list.
 ## Notebooks
 
 Each representative example has a tutorial notebook under
-`examples/notebooks/` that follows `docs/notebook_spec.md`: it states the
+`examples/notebooks/` that follows `docs/contributing/notebook_spec.md`: it states the
 model, observation model, and filter update in TeX (symbols defined in
 `docs/notation.md`), visualizes truth/observations and the analysis, and
 plots the analysis RMSE against the observation-noise scale

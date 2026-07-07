@@ -130,7 +130,7 @@ analysis ensemble (solved with the POT package).
 
 ## RMSE convention
 
-See `docs/notebook_spec.md`: analysis RMSE is
+See `docs/contributing/notebook_spec.md`: analysis RMSE is
 $\mathrm{RMSE}_k = \sqrt{\frac{1}{N_x}\sum_i (\hat{x}^a_{k,i} - x_{k,i})^2}$
 with $\hat{x}^a_k$ the analysis (ensemble-mean) estimate, compared against
 the observation-noise scale
