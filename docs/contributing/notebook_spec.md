@@ -25,8 +25,8 @@ Every representative notebook uses exactly this section structure:
 ## Content contract
 
 - **Self-contained TeX**: Markdown cells state the continuous model, the
-  discrete forecast map $x_k = M_k(x_{k-1})$, the observation model
-  $y_k = H_k x_k + \varepsilon_k$, $\varepsilon_k \sim N(0, R_k)$, and the
+  discrete forecast map $x_n = M_n(x_{n-1})$, the observation model
+  $y_n = H_n x_n + \varepsilon_n$, $\varepsilon_n \sim N(0, R_n)$, and the
   analysis update of the specific filter, using the symbols of
   `docs/notation.md`. A reader should understand the benchmark without
   opening other files.
@@ -48,13 +48,13 @@ Every representative notebook uses exactly this section structure:
 
 ## RMSE and observation-noise-scale convention
 
-For truth $x_k \in \mathbb{R}^{N_x}$ and analysis estimate $\hat{x}_k^a$
+For truth $x_n \in \mathbb{R}^{N_x}$ and analysis estimate $\hat{x}_n^a$
 (the analysis ensemble mean for ensemble/particle filters, the analysis
 state for 3DVar/ExKF),
 
 $$
-\mathrm{RMSE}_k
-= \sqrt{\frac{1}{N_x} \sum_{i=1}^{N_x} (\hat{x}_{k,i}^a - x_{k,i})^2}.
+\mathrm{RMSE}_n
+= \sqrt{\frac{1}{N_x} \sum_{i=1}^{N_x} (\hat{x}_{n,i}^a - x_{n,i})^2}.
 $$
 
 The observation-noise scale reported for comparison is

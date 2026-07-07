@@ -6,19 +6,19 @@ author's thesis notation.
 
 | Symbol | Meaning |
 | --- | --- |
-| $x_k \in \mathbb{R}^{N_x}$ | true state at assimilation time $k$ |
-| $x_k^f$ | forecast state before assimilating $y_k$ |
-| $x_k^a$ | analysis state after assimilating $y_k$ |
-| $M_k$ | nonlinear forecast map from $k-1$ to $k$ |
-| $F_k$ | tangent-linear or finite-difference Jacobian of $M_k$ |
-| $y_k \in \mathbb{R}^{N_y}$ | observation vector |
-| $H_k$ | linear observation operator or its local linear representation |
-| $R_k$ | observation-error covariance |
+| $x_n \in \mathbb{R}^{N_x}$ | true state at assimilation time $n$ |
+| $x_n^f$ | forecast state before assimilating $y_n$ |
+| $x_n^a$ | analysis state after assimilating $y_n$ |
+| $M_n$ | nonlinear forecast map from $n-1$ to $n$ |
+| $F_n$ | tangent-linear or finite-difference Jacobian of $M_n$ |
+| $y_n \in \mathbb{R}^{N_y}$ | observation vector |
+| $H_n$ | linear observation operator or its local linear representation |
+| $R_n$ | observation-error covariance |
 | $B$ | background-error covariance used by 3DVar |
-| $P_k^f$, $P_k^a$ | forecast / analysis error covariance |
-| $X_k \in \mathbb{R}^{m \times N_x}$ | ensemble matrix whose rows are members |
-| $\bar{x}_k$ | ensemble mean |
-| $A_k$ | ensemble perturbation (anomaly) matrix |
+| $P_n^f$, $P_n^a$ | forecast / analysis error covariance |
+| $X_n \in \mathbb{R}^{m \times N_x}$ | ensemble matrix whose rows are members |
+| $\bar{x}_n$ | ensemble mean |
+| $A_n$ | ensemble perturbation (anomaly) matrix |
 | $m$ | ensemble size or number of particles |
 | $w^{(i)}$ | particle weight of member $i$ |
 | $\alpha$ | anomaly inflation factor; $A \to \alpha A$ so $P \to \alpha^2 P$ |
@@ -29,11 +29,11 @@ author's thesis notation.
 All representative examples use the discrete-time state-space model
 
 $$
-x_k = M_k(x_{k-1}), \qquad
-y_k = H_k x_k + \varepsilon_k, \quad \varepsilon_k \sim N(0, R_k),
+x_n = M_n(x_{n-1}), \qquad
+y_n = H_n x_n + \varepsilon_n, \quad \varepsilon_n \sim N(0, R_n),
 $$
 
-where $M_k$ advances the model over one assimilation window (numerical
+where $M_n$ advances the model over one assimilation window (numerical
 integration of the underlying ODE/PDE with the fourth-order Runge-Kutta
 scheme, `da.scheme.rk4`).
 
@@ -56,12 +56,13 @@ $$
 \qquad j = 1, \dots, J \ (\text{indices mod } J).
 $$
 
-**2D Navier-Stokes (vorticity form on the torus)** with viscosity $\nu$,
-linear drag $\gamma$, and stationary (Kolmogorov-type) forcing $f$:
+**2D Navier-Stokes (vorticity form on the torus)** with viscosity $\nu$ and
+stationary (Kolmogorov-type) forcing $f$ (the representative example uses no
+linear drag):
 
 $$
 \partial_t \omega + (u \cdot \nabla)\, \omega
-= \nu \Delta \omega - \gamma \omega + f,
+= \nu \Delta \omega + f,
 \qquad u = \nabla^{\perp} \Delta^{-1} \omega ,
 $$
 
@@ -74,21 +75,21 @@ spectrum (`NSE2DTorus.to_spectral_state`).
 
 $$
 K = B H^{\mathsf T} (H B H^{\mathsf T} + R)^{-1}, \qquad
-x_k^a = x_k^f + K (y_k - H x_k^f).
+x_n^a = x_n^f + K (y_n - H x_n^f).
 $$
 
 **ExKF** propagates the covariance through the linearized forecast map,
 
 $$
-P_k^f = F_k P_{k-1}^a F_k^{\mathsf T} + Q_k, \qquad
-K_k = P_k^f H^{\mathsf T} (H P_k^f H^{\mathsf T} + R)^{-1},
+P_n^f = F_n P_{n-1}^a F_n^{\mathsf T} + Q_n, \qquad
+K_n = P_n^f H^{\mathsf T} (H P_n^f H^{\mathsf T} + R)^{-1},
 $$
 
-with $x_k^a = x_k^f + K_k (y_k - H x_k^f)$ and
-$P_k^a = (I - K_k H) P_k^f$.
+with $x_n^a = x_n^f + K_n (y_n - H x_n^f)$ and
+$P_n^a = (I - K_n H) P_n^f$.
 
 **ETKF** decomposes the forecast ensemble into mean and anomalies,
-$X_k^f = \mathbf{1}\bar{x}_k^f + A_k^f$, and forms the analysis in the
+$X_n^f = \mathbf{1}\bar{x}_n^f + A_n^f$, and forms the analysis in the
 $m$-dimensional ensemble space:
 
 $$
@@ -114,8 +115,8 @@ between component $j$ and each observation location.
 updates weights with the Gaussian likelihood
 
 $$
-w_k^{(i)} \propto w_{k-1}^{(i)}
-\exp\!\Big(-\tfrac{1}{2}\,\|y_k - H x_k^{(i)}\|_{R^{-1}}^2\Big),
+w_n^{(i)} \propto w_{n-1}^{(i)}
+\exp\!\Big(-\tfrac{1}{2}\,\|y_n - H x_n^{(i)}\|_{R^{-1}}^2\Big),
 $$
 
 and resamples (multinomial / systematic / residual) when the effective
@@ -124,14 +125,14 @@ threshold. Small additive noise (`add_inflation`) counteracts weight
 collapse.
 
 **ETPF** replaces stochastic resampling by a deterministic linear ensemble
-transform $X^a = T^{\mathsf T} X^f$, where $T$ is $m$ times the optimal
-transport coupling between the weighted forecast ensemble and the uniform
-analysis ensemble (solved with the POT package).
+transform $X^a = T^{\mathsf T} X^f$, where $T$ is $m$ times the optimal-transport
+coupling that maps the weighted forecast ensemble onto the uniform analysis
+ensemble with minimal squared-Euclidean cost (solved with the POT package).
 
 ## RMSE convention
 
 See `docs/contributing/notebook_spec.md`: analysis RMSE is
-$\mathrm{RMSE}_k = \sqrt{\frac{1}{N_x}\sum_i (\hat{x}^a_{k,i} - x_{k,i})^2}$
-with $\hat{x}^a_k$ the analysis (ensemble-mean) estimate, compared against
+$\mathrm{RMSE}_n = \sqrt{\frac{1}{N_x}\sum_i (\hat{x}^a_{n,i} - x_{n,i})^2}$
+with $\hat{x}^a_n$ the analysis (ensemble-mean) estimate, compared against
 the observation-noise scale
 $\sigma_{\mathrm{obs}} = \sqrt{\operatorname{tr}(R)/N_y}$.
