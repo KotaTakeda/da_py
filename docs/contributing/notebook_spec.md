@@ -1,5 +1,8 @@
 # Representative Notebook Specification
 
+> Contributor/maintenance specification — not user-facing documentation. It is
+> the authoring contract for the representative tutorial notebooks.
+
 Common specification for the representative tutorial notebooks under
 `examples/notebooks/` (issue #38). Model-specific issues (#39, #40, #41)
 implement this contract. `examples/example_registry.json` remains the

@@ -85,7 +85,7 @@ def test_nse2d_default_assimilates_below_observation_noise():
     """The NSE2D representative default must actually assimilate.
 
     Guards against shipping a default whose analysis RMSE stays at the
-    attractor scale (see docs/notebook_spec.md: a successful default reaches an
+    attractor scale (see docs/contributing/notebook_spec.md: a successful default reaches an
     RMSE clearly below the observation-noise scale).
     """
     result = subprocess.run(
