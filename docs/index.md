@@ -11,3 +11,7 @@ examples.
 The source of truth for representative example metadata is
 `examples/example_registry.json`. When adding or renaming an example, update the
 registry, the matching script/notebook, and `docs/examples.md` in the same PR.
+
+Contributor/maintenance specifications for authoring the representative
+notebooks live under `docs/contributing/` and are not part of the user-facing
+documentation.
