@@ -8,7 +8,7 @@ act as regression guards for the RHS implementations.
 import numpy as np
 
 from da.l63 import atr_radious_bound, lorenz63, max_lyapunov_exponent_l63
-from da.l96 import lorenz96
+from da.l96 import lorenz96, two_thirds_observation
 
 
 def test_lorenz63_shape_and_dtype():
@@ -76,3 +76,20 @@ def test_lorenz96_accepts_vector_forcing():
     x = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
     F = np.full(5, 8.0)
     np.testing.assert_allclose(lorenz96(0.0, x, F), lorenz96(0.0, x, 8.0))
+
+
+def test_two_thirds_observation_operator():
+    H, observed = two_thirds_observation(60)
+    assert H.shape == (40, 60)
+    # every third component (index 2, 5, 8, ...) is unobserved
+    assert observed.tolist() == [i for i in range(60) if i % 3 != 2]
+    # exactly one 1 per observed row, selecting the right column
+    assert np.array_equal(H.sum(axis=1), np.ones(40))
+    assert np.array_equal(H @ np.arange(60), observed.astype(float))
+
+
+def test_two_thirds_observation_requires_multiple_of_three():
+    import pytest
+
+    with pytest.raises(ValueError, match="divisible by 3"):
+        two_thirds_observation(61)
