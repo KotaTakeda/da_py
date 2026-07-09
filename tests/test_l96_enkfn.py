@@ -30,6 +30,30 @@ def test_two_thirds_observation_operator():
     assert np.array_equal(H @ np.arange(60), observed.astype(float))
 
 
+def _alpha_grid(**kw):
+    import argparse
+
+    sys.path.insert(0, str(ROOT / "examples" / "scripts"))
+    try:
+        import l96_enkfn_tuning
+    finally:
+        sys.path.remove(str(ROOT / "examples" / "scripts"))
+    return l96_enkfn_tuning.alpha_grid(argparse.Namespace(**kw))
+
+
+def test_alpha_grid_stays_within_requested_range():
+    # exact-multiple range: endpoints inclusive
+    grid = _alpha_grid(alpha_min=1.00, alpha_max=1.20, alpha_step=0.02)
+    assert grid[0] == 1.00 and grid[-1] == 1.20
+    assert len(grid) == 11
+    # non-multiple range must not overshoot alpha_max
+    grid = _alpha_grid(alpha_min=1.0, alpha_max=1.06, alpha_step=0.1)
+    assert grid.max() <= 1.06 + 1e-9
+    grid = _alpha_grid(alpha_min=1.0, alpha_max=1.05, alpha_step=0.02)
+    assert grid.max() <= 1.05 + 1e-9
+    assert grid.tolist() == [1.0, 1.02, 1.04]
+
+
 def test_benchmark_script_smoke_reports_both_methods():
     result = subprocess.run(
         [sys.executable, "examples/scripts/l96_enkfn.py", "--cycles", "2"],

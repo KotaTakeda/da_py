@@ -51,7 +51,15 @@ def parse_args():
 
 
 def alpha_grid(args):
-    n = int(round((args.alpha_max - args.alpha_min) / args.alpha_step)) + 1
+    if args.alpha_step <= 0:
+        raise ValueError("--alpha-step must be positive")
+    if args.alpha_max < args.alpha_min:
+        raise ValueError("--alpha-max must be >= --alpha-min")
+    # Use floor (with a small tolerance for float drift) so the grid stays
+    # within [alpha_min, alpha_max] and never overshoots alpha_max when the
+    # range is not an exact multiple of the step.
+    span = args.alpha_max - args.alpha_min
+    n = int(np.floor(span / args.alpha_step + 1e-9)) + 1
     return np.round(args.alpha_min + args.alpha_step * np.arange(n), 6)
 
 
