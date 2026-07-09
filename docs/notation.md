@@ -24,53 +24,34 @@ author's thesis notation.
 | $\alpha$ | anomaly inflation factor; $A \to \alpha A$ so $P \to \alpha^2 P$ |
 | $\rho$, $c$ | localization function / localization radius |
 
-## Typographic conventions
-
-The following conventions are used for new da_py documentation. They are meant
-to keep finite-dimensional, code-facing notation distinct from Hilbert-space
-notation used in some references.
-
-| Item | da_py convention | Avoid / reference-specific form | Rationale |
-| --- | --- | --- | --- |
-| Vector and matrix symbols | Use plain italic letters, e.g. $x$, $y$, $X$, $A$, $P$, $R$. | Do not introduce bold symbols such as $\mathbf{x}$ or $\mathbf{X}$ in new da_py docs unless quoting a source. | This matches the current docs and keeps symbols close to Python names. |
-| Ensemble matrix | Use $X$ for the ensemble and $A$ for the anomaly matrix. | Takeda thesis uses $V$ and $dV$; some papers use $E$ or reuse $X$ for anomalies. | Keep the project convention separate from reference notation. |
-| Mathematical operators | Typeset named operators in roman form: $\operatorname{Cov}$, $\operatorname{rank}$, $\operatorname{Ran}$, $\operatorname{Tr}$, $\operatorname{diag}$, $\operatorname{id}$. | Avoid italic words such as $Cov$, $rank$, $Tr$, $diag$. | Roman operator names distinguish operators from products of variables. |
-| Differential or deviation prefix | Use $dV$ only when reproducing Takeda thesis notation; use $A$ or $X-\bar{X}$ in da_py docs. | Do not interpret the `d` in $dV$ as a differential. | In the thesis notation, $dV$ denotes ensemble deviations. |
-| State and observation spaces | Use $\mathbb{R}^{N_x}$ and $\mathbb{R}^{N_y}$ for finite-dimensional examples. | Use Hilbert-space symbols such as $H$ or observation space $Y$ only when discussing the reference setting. | This avoids a collision between state space $H$ and observation operator $H$. |
-| Observation operator | Use $H$ or $H_n$ for the observation operator. | Avoid using $\mathcal{H}$ unless the observation map is nonlinear and the distinction is needed. | The code uses `H` for both matrix and callable observations. |
-| Transpose and adjoint | Use $^{\mathsf T}$ for finite-dimensional transpose. Use $^*$ only for Hilbert-space adjoints in reference notation. | Avoid plain $^T$ in displayed documentation. | This separates code-facing matrix notation from thesis notation. |
-| Time and ensemble indices | Use time index $n$ as a subscript and ensemble member index $k$ as a superscript in parentheses: $x_n^{(k)}$. | Avoid using $k$ as a time index in DA recursions. | This keeps time evolution and ensemble membership unambiguous. |
-| Forecast and analysis labels | Use superscripts $f$ and $a$, e.g. $X_n^f$, $P_n^a$. | Avoid subscripts such as $X_{f,n}$ unless quoting a source. | Superscripts match the existing filter notation. |
-| Python array names | Put code identifiers in backticks: `X`, `Xf`, `Xa`, `Rinv`, `dy`. | Do not treat code identifiers as mathematical symbols in prose. | Code names encode storage layout and implementation details. |
-
 ## Reference notation comparison
 
-The project default keeps the code-facing symbols above. Reference-specific
-symbols are used only when comparing with a cited source or reproducing a
-derivation.
+The project default keeps code-facing symbols plain and finite-dimensional.
+Reference-specific symbols and fonts are used only when comparing with a cited
+source or reproducing a derivation.
 
-| Concept | da_py / this note | Takeda thesis | EnKF-N papers | Remarks |
+| Concept | da_py / this note | Takeda thesis | EnKF-N papers | TeX and typography remarks |
 | --- | --- | --- | --- | --- |
-| State | $x \in \mathbb{R}^{N_x}$ | $v \in H$ | commonly $x$ | da_py examples are finite-dimensional. |
-| True state | $x_n$ or `x_true` | problem-dependent exact state | commonly truth or $x^t$ | Used mainly in OSSE examples. |
-| Observation | $y_n$ or `y_obs` | observation-space element | commonly $y$ | Passed to filter update methods. |
-| Observation operator | $H_n$ or $H$ | observation map/operator | $H$ or $\mathcal{H}$ | In code, `H` may be an array or callable. |
-| Observation error covariance | $R_n$ or $R$ | observation-noise covariance | $R$ | Stored as `R`; ETKF stores `Rinv`. |
-| Ensemble size | $m$ | $m$ | often $N$ | da_py uses `m` consistently for ensemble size. |
-| Ensemble member | $x^{(k)}$ | $v^{(k)} \in H$ | often $x_k$ or $x^{(k)}$ | Code stores members as rows of `X`. |
-| Ensemble | $X=[x^{(k)}]_{k=1}^m$ | $V=[v^{(k)}]_{k=1}^m \in H^m$ | often $E$ or $X$ | Mathematical derivations may use column-wise members. |
-| Ensemble mean | $\bar{x}$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | often $\bar{x}$ | Avoid using bare $x$ for the mean in new docs. |
-| Mean ensemble | $\bar{X}=[\bar{x},\ldots,\bar{x}]$ | $v1=[v,\ldots,v]$ | often implicit | Useful for defining anomalies. |
-| Ensemble deviation / anomaly | $A=X-\bar{X}$ | $dV=[v^{(k)}-v]_{k=1}^m$ | often anomaly matrix | This note uses "anomaly" and "deviation" synonymously. |
-| Sample covariance | $P=(m-1)^{-1}AA^{\mathsf T}$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | commonly $(N-1)^{-1}XX^{\mathsf T}$ for anomaly matrix $X$ | $*$ denotes the Hilbert adjoint in infinite-dimensional notation. |
-| Forecast ensemble | $X^f$ | forecast version of $V$ | often $E^f$ or $X^f$ | Code variable: `Xf`. |
-| Analysis ensemble | $X^a$ | analysis version of $V$ | often $E^a$ or $X^a$ | Code variable: `Xa`. |
-| Forecast covariance | $P^f$ | $\operatorname{Cov}_m(V^f)$ | commonly $P^f$ | Represented implicitly by anomalies in ETKF. |
-| Analysis covariance | $P^a$ | $\operatorname{Cov}_m(V^a)$ | commonly $P^a$ | Represented by the transformed ensemble in ETKF. |
-| Innovation | $y-H\bar{x}^f$ | observation residual | commonly $y-Hx^f$ | Code variable: `dy`. |
-| Kalman gain | $K=P^fH^{\mathsf T}(HP^fH^{\mathsf T}+R)^{-1}$ | standard Kalman-gain notation | standard Kalman-gain notation | ETKF does not need to form $K$ explicitly. |
-| Transform matrix | $T$ | ETKF transform matrix | ensemble transform or weight transform | Acts in ensemble space. |
-| Inflation parameter | $\alpha$ | multiplicative inflation parameter | often $\lambda$ or a prior-related scale parameter | Conventions differ: some inflate anomalies, others inflate covariance or estimate inflation. |
+| State | $x \in \mathbb{R}^{N_x}$ | $v \in H$ | commonly $x$ | Use plain italic state variables. Use $\mathbb{R}^{N_x}$ for finite-dimensional examples; reserve Hilbert-space $H$ for reference settings to avoid collision with the observation operator. |
+| True state | $x_n$ or `x_true` | problem-dependent exact state | commonly truth or $x^t$ | Use time index $n$ as a subscript. Put code names such as `x_true` in backticks, not math mode. |
+| Observation | $y_n$ or `y_obs` | observation-space element | commonly $y$ | Use plain italic $y$. Put implementation names such as `y_obs` in backticks. |
+| Observation operator | $H_n$ or $H$ | observation map/operator | $H$ or $\mathcal{H}$ | Use plain $H$ for the code-facing operator. Use $\mathcal{H}$ only when a source distinguishes nonlinear observation maps from linear matrices. |
+| Observation error covariance | $R_n$ or $R$ | observation-noise covariance | $R$ | Use plain italic capital $R$. Code names such as `Rinv` remain backticked implementation identifiers. |
+| Ensemble size | $m$ | $m$ | often $N$ | Use italic scalar $m$ for da_py to avoid conflict with state dimension $N_x$ and observation dimension $N_y$. |
+| Ensemble member | $x_n^{(k)}$ | $v^{(k)} \in H$ | often $x_k$ or $x^{(k)}$ | Use ensemble index $k$ as a parenthesized superscript, and time index $n$ as a subscript. |
+| Ensemble | $X_n=[x_n^{(k)}]_{k=1}^m$ | $V=[v^{(k)}]_{k=1}^m \in H^m$ | often $E$ or $X$ | Use plain italic capital $X$, not bold $\mathbf{X}$. Mathematical derivations may use column-wise members; code stores members as rows. |
+| Ensemble mean | $\bar{x}_n$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | often $\bar{x}$ | Use a bar over the state symbol. Avoid using bare $x$ for the mean in new docs. |
+| Mean ensemble | $\bar{X}_n=[\bar{x}_n,\ldots,\bar{x}_n]$ | $v1=[v,\ldots,v]$ | often implicit | Use $\bar{X}$ for the repeated-mean ensemble. Do not introduce bold-one notation unless a derivation requires it. |
+| Ensemble deviation / anomaly | $A_n=X_n-\bar{X}_n$ | $dV=[v^{(k)}-v]_{k=1}^m$ | often anomaly matrix, sometimes written with $X$ | Use $A$ for the anomaly matrix in da_py. Use $dV$ only when reproducing thesis notation; the `d` in $dV$ is not a differential. |
+| Sample covariance | $P_n=(m-1)^{-1}A_nA_n^{\mathsf T}$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | commonly $(N-1)^{-1}XX^{\mathsf T}$ for anomaly matrix $X$ | Typeset named operators in roman form, e.g. $\operatorname{Cov}$. Use $^{\mathsf T}$ for finite-dimensional transpose and $^*$ only for Hilbert-space adjoints. |
+| Forecast ensemble | $X_n^f$ | forecast version of $V$ | often $E^f$ or $X^f$ | Use forecast label $f$ as a superscript. Code variable: `Xf`. |
+| Analysis ensemble | $X_n^a$ | analysis version of $V$ | often $E^a$ or $X^a$ | Use analysis label $a$ as a superscript. Code variable: `Xa`. |
+| Forecast covariance | $P_n^f$ | $\operatorname{Cov}_m(V^f)$ | commonly $P^f$ | Use $P$ for covariance and $^{\mathsf T}$ for finite-dimensional formulas. ETKF represents this implicitly by anomalies. |
+| Analysis covariance | $P_n^a$ | $\operatorname{Cov}_m(V^a)$ | commonly $P^a$ | Use $P_n^a$ for the finite-dimensional analysis covariance; it is represented by the transformed ensemble in ETKF. |
+| Innovation | $y_n-H_n\bar{x}_n^f$ | observation residual | commonly $y-Hx^f$ | Use a minus sign between mathematical symbols. Code variable: `dy`; do not typeset `dy` as a differential. |
+| Kalman gain | $K_n=P_n^fH_n^{\mathsf T}(H_nP_n^fH_n^{\mathsf T}+R_n)^{-1}$ | standard Kalman-gain notation | standard Kalman-gain notation | Use plain italic capital $K$ and finite-dimensional transpose $^{\mathsf T}$. ETKF does not need to form $K$ explicitly. |
+| Transform matrix | $T$ | ETKF transform matrix | ensemble transform or weight transform | Use plain italic capital $T$ for the transform matrix. This is distinct from transpose notation $^{\mathsf T}$. |
+| Inflation parameter | $\alpha$ | multiplicative inflation parameter | often $\lambda$ or a prior-related scale parameter | Use Greek italic $\alpha$ for da_py. Conventions differ: some inflate anomalies, others inflate covariance or estimate inflation. |
 
 The EnKF-N literature also introduces prior parameters and objective functions
 for adaptive inflation. These are algorithmic quantities rather than adopted
