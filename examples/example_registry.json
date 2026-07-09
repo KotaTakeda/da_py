@@ -92,6 +92,24 @@
       }
     },
     {
+      "id": "l96_enkfn",
+      "model": "Lorenz96",
+      "filter": "EnKF-N / tuned ETKF",
+      "script": "examples/scripts/l96_enkfn.py",
+      "notebook": "examples/notebooks/l96_enkfn.ipynb",
+      "docs": "docs/examples.md",
+      "status": "representative",
+      "parameters": {
+        "state_dim": 60,
+        "observation": "periodic 2/3 partial (Ny=40)",
+        "ensemble_size": 30,
+        "etkf_inflation": 1.08,
+        "enkfn_inflation": "adaptive (per cycle)",
+        "cycles": 400,
+        "tuning_script": "examples/scripts/l96_enkfn_tuning.py"
+      }
+    },
+    {
       "id": "nse2d_etkf",
       "model": "NSE2D",
       "filter": "ETKF",

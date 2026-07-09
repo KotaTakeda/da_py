@@ -18,6 +18,18 @@ The source of truth for the package version is `project.version` in
 `pyproject.toml`. At runtime, `da.__version__` is read from the installed package
 metadata.
 
+## Unreleased
+
+### Added
+
+- Representative `l96_enkfn` example: a Lorenz-96 (`Nx = 60`, periodic
+  2/3-observed) benchmark comparing a fixed-inflation ETKF against EnKF-N.
+  Includes a multi-seed ETKF inflation-tuning script
+  (`examples/scripts/l96_enkfn_tuning.py`) that selects `alpha_*` and writes a
+  CSV summary plus an inflation-sweep figure, the paired benchmark script
+  (`examples/scripts/l96_enkfn.py`), and a tutorial notebook. Registered in
+  `examples/example_registry.json` and documented in `docs/examples.md`.
+
 ## 0.7.0 - 2026-07-06
 
 ### Added
