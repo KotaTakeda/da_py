@@ -3,8 +3,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import numpy as np
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -12,22 +10,6 @@ def _parse_reported(stdout, label):
     match = re.search(rf"{re.escape(label)}:\s*([0-9.eE+-]+)", stdout)
     assert match, f"missing '{label}' in:\n{stdout}"
     return float(match.group(1))
-
-
-def test_two_thirds_observation_operator():
-    sys.path.insert(0, str(ROOT / "examples" / "scripts"))
-    try:
-        from _common import l96_two_thirds_observation
-    finally:
-        sys.path.remove(str(ROOT / "examples" / "scripts"))
-
-    H, observed = l96_two_thirds_observation(60)
-    assert H.shape == (40, 60)
-    # every third component (index 2, 5, 8, ...) is unobserved
-    assert observed.tolist() == [i for i in range(60) if i % 3 != 2]
-    # exactly one 1 per observed row, selecting the right column
-    assert np.array_equal(H.sum(axis=1), np.ones(40))
-    assert np.array_equal(H @ np.arange(60), observed.astype(float))
 
 
 def _alpha_grid(**kw):

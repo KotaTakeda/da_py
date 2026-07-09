@@ -29,6 +29,8 @@ metadata.
   CSV summary plus an inflation-sweep figure, the paired benchmark script
   (`examples/scripts/l96_enkfn.py`), and a tutorial notebook. Registered in
   `examples/example_registry.json` and documented in `docs/examples.md`.
+- `da.l96.two_thirds_observation`, a reusable constructor for the periodic 2/3
+  Lorenz-96 partial-observation operator.
 
 ## 0.7.0 - 2026-07-06
 

@@ -20,12 +20,12 @@ import os
 import numpy as np
 
 from da.etkf import ETKF
+from da.l96 import two_thirds_observation
 
 from _common import (
     add_common_args,
     attractor_ensemble,
     l96_step,
-    l96_two_thirds_observation,
     obs_noise_scale,
     post_spinup_mean,
     rmse,
@@ -116,7 +116,7 @@ def main():
     args = parse_args().parse_args()
     spinup = args.spinup_cycles if args.spinup_cycles is not None else args.cycles // 2
 
-    H, observed = l96_two_thirds_observation(args.dimension)
+    H, observed = two_thirds_observation(args.dimension)
     R = args.obs_noise_variance * np.eye(H.shape[0])
     x0 = 8.0 * np.ones(args.dimension)
     x0[0] += 0.01
