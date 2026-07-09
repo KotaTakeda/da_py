@@ -24,6 +24,48 @@ author's thesis notation.
 | $\alpha$ | anomaly inflation factor; $A \to \alpha A$ so $P \to \alpha^2 P$ |
 | $\rho$, $c$ | localization function / localization radius |
 
+## Reference notation comparison
+
+The project default keeps the code-facing symbols above. Reference-specific
+symbols are used only when comparing with a cited source or reproducing a
+derivation.
+
+| Concept | da_py / this note | Takeda thesis | EnKF-N papers | Remarks |
+| --- | --- | --- | --- | --- |
+| State | $x \in \mathbb{R}^{N_x}$ | $v \in H$ | commonly $x$ | da_py examples are finite-dimensional. |
+| True state | $x_n$ or `x_true` | problem-dependent exact state | commonly truth or $x^t$ | Used mainly in OSSE examples. |
+| Observation | $y_n$ or `y_obs` | observation-space element | commonly $y$ | Passed to filter update methods. |
+| Observation operator | $H_n$ or $H$ | observation map/operator | $H$ or $\mathcal{H}$ | In code, `H` may be an array or callable. |
+| Observation error covariance | $R_n$ or $R$ | observation-noise covariance | $R$ | Stored as `R`; ETKF stores `Rinv`. |
+| Ensemble size | $m$ | $m$ | often $N$ | da_py uses `m` consistently for ensemble size. |
+| Ensemble member | $x^{(k)}$ | $v^{(k)} \in H$ | often $x_k$ or $x^{(k)}$ | Code stores members as rows of `X`. |
+| Ensemble | $X=[x^{(k)}]_{k=1}^m$ | $V=[v^{(k)}]_{k=1}^m \in H^m$ | often $E$ or $X$ | Mathematical derivations may use column-wise members. |
+| Ensemble mean | $\bar{x}$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | often $\bar{x}$ | Avoid using bare $x$ for the mean in new docs. |
+| Mean ensemble | $\bar{X}=[\bar{x},\ldots,\bar{x}]$ | $v1=[v,\ldots,v]$ | often implicit | Useful for defining anomalies. |
+| Ensemble deviation / anomaly | $A=X-\bar{X}$ | $dV=[v^{(k)}-v]_{k=1}^m$ | often anomaly matrix | This note uses "anomaly" and "deviation" synonymously. |
+| Sample covariance | $P=(m-1)^{-1}AA^{\mathsf T}$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | commonly $(N-1)^{-1}XX^{\mathsf T}$ for anomaly matrix $X$ | $*$ denotes the Hilbert adjoint in infinite-dimensional notation. |
+| Forecast ensemble | $X^f$ | forecast version of $V$ | often $E^f$ or $X^f$ | Code variable: `Xf`. |
+| Analysis ensemble | $X^a$ | analysis version of $V$ | often $E^a$ or $X^a$ | Code variable: `Xa`. |
+| Forecast covariance | $P^f$ | $\operatorname{Cov}_m(V^f)$ | commonly $P^f$ | Represented implicitly by anomalies in ETKF. |
+| Analysis covariance | $P^a$ | $\operatorname{Cov}_m(V^a)$ | commonly $P^a$ | Represented by the transformed ensemble in ETKF. |
+| Innovation | $y-H\bar{x}^f$ | observation residual | commonly $y-Hx^f$ | Code variable: `dy`. |
+| Kalman gain | $K=P^fH^{\mathsf T}(HP^fH^{\mathsf T}+R)^{-1}$ | standard Kalman-gain notation | standard Kalman-gain notation | ETKF does not need to form $K$ explicitly. |
+| Transform matrix | $T$ | ETKF transform matrix | ensemble transform or weight transform | Acts in ensemble space. |
+| Inflation parameter | $\alpha$ | multiplicative inflation parameter | often $\lambda$ or a prior-related scale parameter | Conventions differ: some inflate anomalies, others inflate covariance or estimate inflation. |
+| EnKF-N prior/hyperparameter | not implemented | not part of the current da_py ETKF notation | inverse-gamma or Jeffreys-prior parameter in EnKF-N derivations | Included for terminology comparison only. |
+| Objective/cost function | not exposed as a public API | variational/objective form in filter derivations | ensemble-space objective augmented by inflation/prior terms | No algorithmic behavior is implied here. |
+
+Reference locations checked:
+
+- Takeda thesis, Section 2.3.1 and ETKF definitions: $V$, $v$, $v1$, $dV$,
+  and $\operatorname{Cov}_m(V)$.
+- Bocquet and coauthors' EnKF-N papers: ensemble-space anomaly notation,
+  observation operator, observation-error covariance, inflation/prior
+  parameter, and objective-function terminology.
+- Existing repository code and examples: `src/etkf.py`, `src/letkf.py`,
+  `src/po.py`, `src/var3d.py`, and representative Lorenz-63/Lorenz-96
+  notebooks.
+
 ## State-space and observation model
 
 All representative examples use the discrete-time state-space model

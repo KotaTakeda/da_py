@@ -131,6 +131,10 @@ with viz.style_context():
 その後段の Kelly 型 ETKF ベンチマーク(自由発展/全モード/低モード/
 高モードのみ観測の比較)は `examples/archive/nse2d_partial_obs_enkf.py` を参照してください。
 
+## Documentation
+
+- [Notation and terminology](docs/notation.md)
+
 ## OSSE settings
 
 ### Example 1
