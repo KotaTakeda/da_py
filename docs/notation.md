@@ -30,45 +30,38 @@ The project default keeps code-facing symbols plain and finite-dimensional.
 Reference-specific symbols and fonts are used only when comparing with a cited
 source or reproducing a derivation.
 
-| Concept | da_py / this note | Takeda thesis | EnKF-N papers | TeX and typography remarks |
+| Concept | da_py / this note | Takeda thesis | Takeda and Miyoshi (2026) | Remarks |
 | --- | --- | --- | --- | --- |
-| State | $x \in \mathbb{R}^{N_x}$ | $v \in H$ | commonly $x$ | Use plain italic state variables. Use $\mathbb{R}^{N_x}$ for finite-dimensional examples; reserve Hilbert-space $H$ for reference settings to avoid collision with the observation operator. |
-| True state | $x_n$ or `x_true` | problem-dependent exact state | commonly truth or $x^t$ | Use time index $n$ as a subscript. Put code names such as `x_true` in backticks, not math mode. |
-| Observation | $y_n$ or `y_obs` | observation-space element | commonly $y$ | Use plain italic $y$. Put implementation names such as `y_obs` in backticks. |
-| Observation operator | $H_n$ or $H$ | observation map/operator | $H$ or $\mathcal{H}$ | Use plain $H$ for the code-facing operator. Use $\mathcal{H}$ only when a source distinguishes nonlinear observation maps from linear matrices. |
-| Observation error covariance | $R_n$ or $R$ | observation-noise covariance | $R$ | Use plain italic capital $R$. Code names such as `Rinv` remain backticked implementation identifiers. |
-| Ensemble size | $m$ | $m$ | often $N$ | Use italic scalar $m$ for da_py to avoid conflict with state dimension $N_x$ and observation dimension $N_y$. |
-| Ensemble member | $x_n^{(k)}$ | $v^{(k)} \in H$ | often $x_k$ or $x^{(k)}$ | Use ensemble index $k$ as a parenthesized superscript, and time index $n$ as a subscript. |
-| Ensemble | $X_n=[x_n^{(k)}]_{k=1}^m$ | $V=[v^{(k)}]_{k=1}^m \in H^m$ | often $E$ or $X$ | Use plain italic capital $X$, not bold $\mathbf{X}$. Mathematical derivations may use column-wise members; code stores members as rows. |
-| Ensemble mean | $\bar{x}_n$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | often $\bar{x}$ | Use a bar over the state symbol. Avoid using bare $x$ for the mean in new docs. |
-| Mean ensemble | $\bar{X}_n=[\bar{x}_n,\ldots,\bar{x}_n]$ | $v1=[v,\ldots,v]$ | often implicit | Use $\bar{X}$ for the repeated-mean ensemble. Do not introduce bold-one notation unless a derivation requires it. |
-| Ensemble deviation / anomaly | $A_n=X_n-\bar{X}_n$ | $dV=[v^{(k)}-v]_{k=1}^m$ | often anomaly matrix, sometimes written with $X$ | Use $A$ for the anomaly matrix in da_py. Use $dV$ only when reproducing thesis notation; the `d` in $dV$ is not a differential. |
-| Sample covariance | $P_n=(m-1)^{-1}A_nA_n^{\mathsf T}$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | commonly $(N-1)^{-1}XX^{\mathsf T}$ for anomaly matrix $X$ | Typeset named operators in roman form, e.g. $\operatorname{Cov}$. Use $^{\mathsf T}$ for finite-dimensional transpose and $^*$ only for Hilbert-space adjoints. |
-| Forecast ensemble | $X_n^f$ | forecast version of $V$ | often $E^f$ or $X^f$ | Use forecast label $f$ as a superscript. Code variable: `Xf`. |
-| Analysis ensemble | $X_n^a$ | analysis version of $V$ | often $E^a$ or $X^a$ | Use analysis label $a$ as a superscript. Code variable: `Xa`. |
-| Forecast covariance | $P_n^f$ | $\operatorname{Cov}_m(V^f)$ | commonly $P^f$ | Use $P$ for covariance and $^{\mathsf T}$ for finite-dimensional formulas. ETKF represents this implicitly by anomalies. |
-| Analysis covariance | $P_n^a$ | $\operatorname{Cov}_m(V^a)$ | commonly $P^a$ | Use $P_n^a$ for the finite-dimensional analysis covariance; it is represented by the transformed ensemble in ETKF. |
-| Innovation | $y_n-H_n\bar{x}_n^f$ | observation residual | commonly $y-Hx^f$ | Use a minus sign between mathematical symbols. Code variable: `dy`; do not typeset `dy` as a differential. |
-| Kalman gain | $K_n=P_n^fH_n^{\mathsf T}(H_nP_n^fH_n^{\mathsf T}+R_n)^{-1}$ | standard Kalman-gain notation | standard Kalman-gain notation | Use plain italic capital $K$ and finite-dimensional transpose $^{\mathsf T}$. ETKF does not need to form $K$ explicitly. |
-| Transform matrix | $T$ | ETKF transform matrix | ensemble transform or weight transform | Use plain italic capital $T$ for the transform matrix. This is distinct from transpose notation $^{\mathsf T}$. |
-| Inflation parameter | $\alpha$ | multiplicative inflation parameter | often $\lambda$ or a prior-related scale parameter | Use Greek italic $\alpha$ for da_py. Conventions differ: some inflate anomalies, others inflate covariance or estimate inflation. |
-
-The EnKF-N literature also introduces prior parameters and objective functions
-for adaptive inflation. These are algorithmic quantities rather than adopted
-da_py notation, and should be introduced only in a dedicated EnKF-N derivation.
+| State | $x \in \mathbb{R}^{N_x}$ | $v \in H$ | $\boldsymbol{x}_n \in \mathbb{R}^{N_x}$ | da_py keeps code-facing symbols plain; Takeda and Miyoshi (2026) uses bold finite-dimensional vectors. |
+| True state | $x_n$ or `x_true` | problem-dependent exact state | $\boldsymbol{x}_n$ | Code names such as `x_true` remain backticked implementation identifiers. |
+| Observation | $y_n$ or `y_obs` | observation-space element | $\boldsymbol{y}_n=\boldsymbol{H}\boldsymbol{x}_n+\boldsymbol{\eta}_n$ | The 2026 paper uses bold vectors and matrices in the observation equation. |
+| Observation operator | $H_n$ or $H$ | observation map/operator | $\boldsymbol{H}\in\mathbb{R}^{N_y\times N_x}$ | da_py uses `H` for both ndarray and callable observations; the paper uses a matrix observation operator. |
+| Observation error covariance | $R_n$ or $R$ | observation-noise covariance | $\boldsymbol{R}\in\mathbb{R}^{N_y\times N_y}$ | The paper assumes $\boldsymbol{\eta}_n\sim\mathcal{N}(0,\boldsymbol{R})$. |
+| Ensemble size | $m$ | $m$ | $m\in\mathbb{N}$, $m^*$ | $m^*$ is the minimum ensemble size in the 2026 paper. |
+| Ensemble member | $x_n^{(k)}$ | $v^{(k)} \in H$ | $\boldsymbol{x}_n^{f(k)}$, $\boldsymbol{x}_n^{a(k)}$ | The paper puts forecast/analysis labels before the parenthesized member index. |
+| Ensemble | $X_n=[x_n^{(k)}]_{k=1}^m$ | $V=[v^{(k)}]_{k=1}^m \in H^m$ | $\boldsymbol{X}\in\mathbb{R}^{N_x\times m}$, $\boldsymbol{X}_0$ | The paper and algorithms use bold ensemble matrices; da_py stores members as rows in implementation arrays. |
+| Ensemble mean | $\bar{x}_n$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | $\boldsymbol{x}_n^f=m^{-1}\sum_{k=1}^m\boldsymbol{x}_n^{f(k)}$, $\boldsymbol{x}_n^a$ | Avoid using bare $x$ for the mean in new da_py docs. |
+| Mean ensemble | $\bar{X}_n=[\bar{x}_n,\ldots,\bar{x}_n]$ | $v1=[v,\ldots,v]$ | not named separately | Use only when needed to define anomalies. |
+| Ensemble deviation / anomaly | $A_n=X_n-\bar{X}_n$ | $dV=[v^{(k)}-v]_{k=1}^m$ | $\boldsymbol{V}_n^f=[\boldsymbol{x}_n^{f(1)}-\boldsymbol{x}_n^f,\ldots,\boldsymbol{x}_n^{f(m)}-\boldsymbol{x}_n^f]$, $\boldsymbol{V}_n^a$ | In the paper, $\boldsymbol{V}$ denotes perturbation/anomaly matrices, not the ensemble itself. |
+| Sample covariance | $P_n=(m-1)^{-1}A_nA_n^{\mathsf T}$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | $\boldsymbol{C}_n^f=\boldsymbol{V}_n^f(\boldsymbol{V}_n^f)^\top/(m-1)$ | da_py uses $^{\mathsf T}$ in docs; the paper uses $\top$ for finite-dimensional transpose. Takeda thesis uses $^*$ for Hilbert-space adjoints. |
+| Forecast ensemble | $X_n^f$ | forecast version of $V$ | $\boldsymbol{x}_n^{f(k)}=\boldsymbol{\Psi}(\boldsymbol{x}_{n-1}^{a(k)})$ | The paper denotes the flow map by $\boldsymbol{\Psi}=\boldsymbol{\Psi}_\tau$. |
+| Analysis ensemble | $X_n^a$ | analysis version of $V$ | $\boldsymbol{x}_n^{a(k)}=\boldsymbol{x}_n^a+\boldsymbol{v}_n^{a(k)}$ | $\boldsymbol{v}_n^{a(k)}$ is the $k$th column of $\boldsymbol{V}_n^a$. |
+| Forecast covariance | $P_n^f$ | $\operatorname{Cov}_m(V^f)$ | $\boldsymbol{C}_n^f$ | The 2026 paper forms the ETKF gain from $\boldsymbol{C}_n^f$. |
+| Analysis covariance | $P_n^a$ | $\operatorname{Cov}_m(V^a)$ | not explicitly named in the ETKF definition | The analysis spread is represented by $\boldsymbol{V}_n^a$. |
+| Innovation | $y_n-H_n\bar{x}_n^f$ | observation residual | $\boldsymbol{y}_n-\boldsymbol{H}\boldsymbol{x}_n^f$ | Code variable: `dy`; do not typeset `dy` as a differential. |
+| Kalman gain | $K_n=P_n^fH_n^{\mathsf T}(H_nP_n^fH_n^{\mathsf T}+R_n)^{-1}$ | standard Kalman-gain notation | $\boldsymbol{K}_n=\boldsymbol{C}_n^f\boldsymbol{H}^\top(\boldsymbol{H}\boldsymbol{C}_n^f\boldsymbol{H}^\top+\boldsymbol{R})^{-1}$ | The paper uses bold $\boldsymbol{K}_n$ and $\top$. |
+| Transform matrix | $T$ | ETKF transform matrix | $\boldsymbol{T}_n=(\boldsymbol{I}_m+(m-1)^{-1}(\boldsymbol{V}_n^f)^\top\boldsymbol{H}^\top\boldsymbol{R}^{-1}\boldsymbol{H}\boldsymbol{V}_n^f)^{-1/2}$ | $\boldsymbol{T}_n$ is a matrix square root chosen symmetric positive definite in the paper. |
+| Inflation parameter | $\alpha$ | multiplicative inflation parameter | $\alpha>1$ | The 2026 paper uses multiplicative covariance inflation in Algorithm 3. |
+| Minimum ensemble size | not used as a package symbol | not part of the ETKF notation here | $m^*=N_+ + 1$ | Added because this is central to the 2026 paper's notation and conclusions. |
+| Error metric | RMSE in examples | problem-dependent | $\mathrm{SE}_n=\|\boldsymbol{x}_n-\boldsymbol{x}_n^a\|^2$, $\mathrm{RMSE}_n$ | Typeset metric names in roman capitals. |
 
 References checked:
 
 - Takeda thesis, Section 2.3.1 and ETKF definitions: $V$, $v$, $v1$, $dV$,
   and $\operatorname{Cov}_m(V)$.
-- M. Bocquet, "Ensemble Kalman filtering without the intrinsic need for
-  inflation," Nonlinear Processes in Geophysics, 18, 735--750, 2011.
-- M. Bocquet and P. Sakov, "Combining inflation-free and iterative ensemble
-  Kalman filters for strongly nonlinear systems," Nonlinear Processes in
-  Geophysics, 19, 383--399, 2012.
-- P. N. Raanes, M. Bocquet, and A. Carrassi, "Adaptive covariance inflation in
-  the ensemble Kalman filter by Gaussian scale mixtures," Quarterly Journal of
-  the Royal Meteorological Society, 145, 53--75, 2019.
+- K. Takeda and T. Miyoshi, "Noise-scaled accuracy of the ensemble Kalman filter
+  with an instability-based minimum ensemble size," Nonlinear Processes in
+  Geophysics, 33, 335--346, 2026.
 - Existing repository code and examples: `src/etkf.py`, `src/letkf.py`,
   `src/po.py`, `src/var3d.py`, and representative Lorenz-63/Lorenz-96
   notebooks.
