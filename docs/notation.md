@@ -40,8 +40,8 @@ source or reproducing a derivation.
 | Ensemble size | $m$ | $m$ | $m\in\mathbb{N}$, $m^*$ | $m^*$ is the minimum ensemble size in the paper-facing notation. |
 | Ensemble member | $x_n^{(k)}$ | $v^{(k)} \in H$ | $\boldsymbol{x}_n^{f(k)}$, $\boldsymbol{x}_n^{a(k)}$ | The paper puts forecast/analysis labels before the parenthesized member index. |
 | Ensemble | $X_n=[x_n^{(k)}]_{k=1}^m$ | $V=[v^{(k)}]_{k=1}^m \in H^m$ | $\boldsymbol{X}\in\mathbb{R}^{N_x\times m}$, $\boldsymbol{X}_0$ | The paper and algorithms use bold ensemble matrices; da_py stores members as rows in implementation arrays. |
-| Ensemble mean | $\bar{x}_n=m^{-1}\sum_{k=1}^m x_n^{(k)}$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ for a generic ensemble, not $\bar{v}$; $\hat{v}_n$ and $v_n$ for forecast and analysis means | $\boldsymbol{x}_n^f=m^{-1}\sum_{k=1}^m\boldsymbol{x}_n^{f(k)}$; $\boldsymbol{x}_n^a$ is the analysis mean updated by the ETKF formula | da_py uses $\bar{x}_n$ to avoid overloading the state symbol. The 2026 paper explicitly defines the forecast mean and then uses the analysis mean in the update and ensemble reconstruction. |
-| Ensemble deviation / anomaly | $A_n=X_n-\mathbf{1}_m\bar{x}_n^{\mathsf T}$ | $dV=[v^{(k)}-v]_{k=1}^m$ with $V=v1+dV$ | $\boldsymbol{V}_n^f=[\boldsymbol{x}_n^{f(1)}-\boldsymbol{x}_n^f,\ldots,\boldsymbol{x}_n^{f(m)}-\boldsymbol{x}_n^f]$, $\boldsymbol{V}_n^a$ | In the paper, $\boldsymbol{V}$ denotes perturbation/anomaly matrices, not the ensemble itself. A separate "mean ensemble" row is unnecessary because it is only the mean part of this decomposition. |
+| Ensemble mean | $\bar{x}_n=m^{-1}\sum_{k=1}^m x_n^{(k)}$ | $\bar{v}=m^{-1}\sum_{k=1}^m v^{(k)}$ for a generic ensemble; $\hat{v}_n$ and $v_n$ for forecast and analysis means | $\boldsymbol{x}_n^f=m^{-1}\sum_{k=1}^m\boldsymbol{x}_n^{f(k)}$; $\boldsymbol{x}_n^a$ is the analysis mean updated by the ETKF formula | da_py uses $\bar{x}_n$ to avoid overloading the state symbol. The 2026 paper explicitly defines the forecast mean and then uses the analysis mean in the update and ensemble reconstruction. |
+| Ensemble deviation / anomaly | $A_n=X_n-\mathbf{1}_m\bar{x}_n^{\mathsf T}$ | $dV=[v^{(k)}-\bar{v}]_{k=1}^m$ with $V=\bar{v}1+dV$ | $\boldsymbol{V}_n^f=[\boldsymbol{x}_n^{f(1)}-\boldsymbol{x}_n^f,\ldots,\boldsymbol{x}_n^{f(m)}-\boldsymbol{x}_n^f]$, $\boldsymbol{V}_n^a$ | In the paper, $\boldsymbol{V}$ denotes perturbation/anomaly matrices, not the ensemble itself. A separate "mean ensemble" row is unnecessary because it is only the mean part of this decomposition. |
 | Sample covariance | $P_n=(m-1)^{-1}A_n^{\mathsf T}A_n$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | $\boldsymbol{C}_n^f=\boldsymbol{V}_n^f(\boldsymbol{V}_n^f)^\top/(m-1)$ | da_py arrays are row-major, so $A_n^{\mathsf T}A_n$ gives the state covariance. Takeda thesis uses $^*$ for Hilbert-space adjoints. |
 | Forecast ensemble | $X_n^f$ | $\hat{V}_n=[\hat{v}_n^{(k)}]_{k=1}^m$ | $\boldsymbol{x}_n^{f(k)}=\boldsymbol{\Psi}(\boldsymbol{x}_{n-1}^{a(k)})$ | Takeda thesis uses hat notation for prediction/forecast quantities rather than superscript $f$. |
 | Analysis ensemble | $X_n^a$ | $V_n=[v_n^{(k)}]_{k=1}^m$ | $\boldsymbol{x}_n^{a(k)}=\boldsymbol{x}_n^a+\boldsymbol{v}_n^{a(k)}$ | $\boldsymbol{v}_n^{a(k)}$ is the $k$th column of $\boldsymbol{V}_n^a$. |
@@ -61,8 +61,8 @@ References checked:
   University, first version February 1, 2025; modified January 1, 2026.
   Available at <https://kotatakeda.github.io/math/pdf/thesis.pdf>. The URL was
   checked on 2026-07-10. See Sections 2.3.1, 3.1, 4.1--4.3, and Definition 4.13
-  for $V$, the ensemble mean $v=m^{-1}\sum_k v^{(k)}$ rather than a barred
-  symbol, $v1$, $dV$, $\operatorname{Cov}_m(V)$, $\varpi_n$, $\hat{V}_n$,
+  for $V$, the ensemble mean $\bar{v}=m^{-1}\sum_k v^{(k)}$,
+  $\bar{v}1$, $dV$, $\operatorname{Cov}_m(V)$, $\varpi_n$, $\hat{V}_n$,
   $\hat{P}_n$, and $T_n$.
 - K. Takeda and T. Miyoshi, "Noise-scaled accuracy of the ensemble Kalman filter
   with an instability-based minimum ensemble size," *Nonlinear Processes in
