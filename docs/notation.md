@@ -40,8 +40,8 @@ source or reproducing a derivation.
 | Ensemble size | $m$ | $m$ | $m\in\mathbb{N}$, $m^*$ | $m^*$ is the minimum ensemble size in the 2026 paper. |
 | Ensemble member | $x_n^{(k)}$ | $v^{(k)} \in H$ | $\boldsymbol{x}_n^{f(k)}$, $\boldsymbol{x}_n^{a(k)}$ | The paper puts forecast/analysis labels before the parenthesized member index. |
 | Ensemble | $X_n=[x_n^{(k)}]_{k=1}^m$ | $V=[v^{(k)}]_{k=1}^m \in H^m$ | $\boldsymbol{X}\in\mathbb{R}^{N_x\times m}$, $\boldsymbol{X}_0$ | The paper and algorithms use bold ensemble matrices; da_py stores members as rows in implementation arrays. |
-| Ensemble mean | $\bar{x}_n$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | $\boldsymbol{x}_n^f=m^{-1}\sum_{k=1}^m\boldsymbol{x}_n^{f(k)}$, $\boldsymbol{x}_n^a$ | Avoid using bare $x$ for the mean in new da_py docs. |
-| Mean ensemble | $\bar{X}_n=[\bar{x}_n,\ldots,\bar{x}_n]$ | $v1=[v,\ldots,v]$ | not named separately | Use only when needed to define anomalies. |
+| Ensemble mean | $\bar{x}_n=m^{-1}\sum_{k=1}^m x_n^{(k)}$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | $\boldsymbol{x}_n^f=m^{-1}\sum_{k=1}^m\boldsymbol{x}_n^{f(k)}$, $\boldsymbol{x}_n^a$ | da_py uses $\bar{x}_n$ to avoid overloading the state symbol. |
+| Mean ensemble | $\mathbf{1}_m\bar{x}_n^{\mathsf T}\in\mathbb{R}^{m\times N_x}$ | $v1=[v,\ldots,v]$ | $\boldsymbol{x}_n^f\boldsymbol{1}^{\top}$ when needed | da_py stores ensemble members as rows; Takeda thesis and Takeda and Miyoshi (2026) write ensemble matrices column-wise. |
 | Ensemble deviation / anomaly | $A_n=X_n-\bar{X}_n$ | $dV=[v^{(k)}-v]_{k=1}^m$ | $\boldsymbol{V}_n^f=[\boldsymbol{x}_n^{f(1)}-\boldsymbol{x}_n^f,\ldots,\boldsymbol{x}_n^{f(m)}-\boldsymbol{x}_n^f]$, $\boldsymbol{V}_n^a$ | In the paper, $\boldsymbol{V}$ denotes perturbation/anomaly matrices, not the ensemble itself. |
 | Sample covariance | $P_n=(m-1)^{-1}A_n^{\mathsf T}A_n$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | $\boldsymbol{C}_n^f=\boldsymbol{V}_n^f(\boldsymbol{V}_n^f)^\top/(m-1)$ | da_py arrays are row-major, so $A_n^{\mathsf T}A_n$ gives the state covariance. Takeda thesis uses $^*$ for Hilbert-space adjoints. |
 | Forecast ensemble | $X_n^f$ | $\hat{V}_n=[\hat{v}_n^{(k)}]_{k=1}^m$ | $\boldsymbol{x}_n^{f(k)}=\boldsymbol{\Psi}(\boldsymbol{x}_{n-1}^{a(k)})$ | Takeda thesis uses hat notation for prediction/forecast quantities rather than superscript $f$. |
@@ -59,7 +59,7 @@ References checked:
 
 - K. Takeda, "Error Analysis of the Ensemble Square Root Filter for Dissipative
   Dynamical Systems," doctoral thesis, Department of Mathematics, Kyoto
-  University, 2026; see Section 2.3.1 and Definition 4.13 for $V$, $v$, $v1$,
+  University, 2025; see Section 2.3.1 and Definition 4.13 for $V$, $v$, $v1$,
   $dV$, $\operatorname{Cov}_m(V)$, $\hat{V}_n$, $\hat{P}_n$, and $T_n$.
 - K. Takeda and T. Miyoshi, "Noise-scaled accuracy of the ensemble Kalman filter
   with an instability-based minimum ensemble size," Nonlinear Processes in
