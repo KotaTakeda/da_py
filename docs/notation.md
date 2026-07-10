@@ -82,10 +82,10 @@ References checked:
   for $V$, $v$, $v1$, $dV$, $\operatorname{Cov}_m(V)$, $\varpi_n$,
   $\hat{V}_n$, $\hat{P}_n$, and $T_n$.
 - K. Takeda and T. Miyoshi, "Noise-scaled accuracy of the ensemble Kalman filter
-  with an instability-based minimum ensemble size," paper notation checked
-  against the manuscript notation available to this project. A public NPG
-  article page was not found by web search on 2026-07-10, so do not treat the
-  volume/page metadata as verified here.
+  with an instability-based minimum ensemble size," *Nonlinear Processes in
+  Geophysics*, 33, 335--346, 2026.
+  <https://doi.org/10.5194/npg-33-335-2026>. The DOI was checked on
+  2026-07-10 and resolves to the NPG article page.
 - Existing repository code and examples: `src/etkf.py`, `src/letkf.py`,
   `src/po.py`, `src/var3d.py`, and representative Lorenz-63/Lorenz-96
   notebooks.
