@@ -140,10 +140,12 @@ $P_{n}^{a} = (I - K_{n} H) P_{n}^{f}$.
 
 **ETKF** decomposes the forecast ensemble into mean and anomalies,
 $X_{n}^{f} = \mathbf{1}\bar{x}_{n}^{f} + A_{n}^{f}$, and forms the analysis in the
-$m$-dimensional ensemble space:
+$m$-dimensional ensemble space. In the compact equations below, $A^{f}$ denotes
+the transposed anomaly matrix used by the transform step,
+$A^{f}\in\mathbb{R}^{N_{x}\times m}$:
 
 $$
-\tilde{P} = \big[(m-1) I + (H A^f)^{\top} R^{-1} (H A^f)\big]^{-1},
+\tilde{P} = \big[(m-1) I + (H A^{f})^{\top} R^{-1} (H A^{f})\big]^{-1},
 $$
 
 $$
