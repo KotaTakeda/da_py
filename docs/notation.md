@@ -54,23 +54,6 @@ source or reproducing a derivation.
 | Minimum ensemble size | not used as a package symbol | not part of the ETKF notation here | $m^*=N_+ + 1$ | Added because this is central to the 2026 paper's notation and conclusions. |
 | Error metric | RMSE in examples | problem-dependent | $\mathrm{SE}_n=\|\boldsymbol{x}_n-\boldsymbol{x}_n^a\|^2$, $\mathrm{RMSE}_n$ | Typeset metric names in roman capitals. |
 
-Typographic conventions:
-
-- Use plain italic scalars and unbold finite-dimensional variables in da_py
-  derivations: $x_n$, $y_n$, $H_n$, $R_n$, $P_n$.
-- Use `\operatorname{...}` for named operators and functions:
-  $\operatorname{Cov}_m$, $\operatorname{rank}$, $\operatorname{Ran}$,
-  $\operatorname{Tr}$, $\operatorname{diag}$, and $\operatorname{id}$.
-- Do not romanize the `d` in perturbation symbols such as $dV$; in the thesis
-  this is part of the variable name, not a differential.
-- Use $\mathsf T$ for finite-dimensional transposes in da_py row-major formulas
-  and $^*$ only for Hilbert-space adjoints or when quoting the thesis.
-- Use calligraphic or blackboard letters only for spaces and probability objects
-  when needed. Avoid using the same plain $H$ simultaneously for both the state
-  space and the observation operator in a local derivation.
-- Keep implementation identifiers, e.g. `X`, `Xf`, `Xa`, `Rinv`, and `dy`, in
-  code font and separate from mathematical symbols.
-
 References checked:
 
 - Kota Takeda, *Error Analysis of the Ensemble Square Root Filter for Dissipative
@@ -78,8 +61,9 @@ References checked:
   University, first version February 1, 2025; modified January 1, 2026.
   Available at <https://kotatakeda.github.io/math/pdf/thesis.pdf>. The URL was
   checked on 2026-07-10. See Sections 2.3.1, 3.1, 4.1--4.3, and Definition 4.13
-  for $V$, $v$, $v1$, $dV$, $\operatorname{Cov}_m(V)$, $\varpi_n$,
-  $\hat{V}_n$, $\hat{P}_n$, and $T_n$.
+  for $V$, the ensemble mean $v=m^{-1}\sum_k v^{(k)}$ rather than a barred
+  symbol, $v1$, $dV$, $\operatorname{Cov}_m(V)$, $\varpi_n$, $\hat{V}_n$,
+  $\hat{P}_n$, and $T_n$.
 - K. Takeda and T. Miyoshi, "Noise-scaled accuracy of the ensemble Kalman filter
   with an instability-based minimum ensemble size," *Nonlinear Processes in
   Geophysics*, 33, 335--346, 2026.
