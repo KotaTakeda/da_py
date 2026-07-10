@@ -31,6 +31,13 @@ metadata.
   `examples/example_registry.json` and documented in `docs/examples.md`.
 - `da.l96.two_thirds_observation`, a reusable constructor for the periodic 2/3
   Lorenz-96 partial-observation operator.
+- `da.noise` with `GaussianModelNoise` and `sample_model_noise`: additive
+  Gaussian model noise (additive stochastic inflation) for ensemble forecasts,
+  applied per member per assimilation cycle in the driver loop. Supports dense
+  positive-semidefinite (including rank-deficient) and diagonal covariances
+  with an explicit `numpy.random.Generator`. Documented in
+  `docs/model_noise.md` together with the project RNG policy
+  (`docs/rng_policy.md`).
 
 ## 0.7.0 - 2026-07-06
 

@@ -6,6 +6,9 @@ examples.
 - `notation.md`: common mathematical notation used in docs and notebooks.
 - `examples.md`: representative model/filter settings, synchronized with
   `examples/example_registry.json`.
+- `model_noise.md`: additive Gaussian model noise (`da.noise`) and how it
+  differs from the inflation mechanisms.
+- `rng_policy.md`: the project-wide random-number policy.
 - `roadmap.md`: examples intentionally left outside v1.
 
 The source of truth for representative example metadata is
