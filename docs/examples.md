@@ -80,7 +80,7 @@ Each representative example has a tutorial notebook under
 model, observation model, and filter update in TeX (symbols defined in
 `docs/notation.md`), visualizes truth/observations and the analysis, and
 plots the analysis RMSE against the observation-noise scale
-$\sigma_{\mathrm{obs}} = \sqrt{\operatorname{tr}(R)/N_y}$. Notebooks use
+$\sigma_{\mathrm{obs}} = \sqrt{\mathrm{tr}(R)/N_y}$. Notebooks use
 longer runs than the smoke-test scripts; each completes well within the
 ~10 minute budget.
 

@@ -60,7 +60,7 @@ $$
 The observation-noise scale reported for comparison is
 
 $$
-\sigma_{\mathrm{obs}} = \sqrt{\operatorname{tr}(R) / N_y},
+\sigma_{\mathrm{obs}} = \sqrt{\mathrm{tr}(R) / N_y},
 $$
 
 the root-mean-square observation-error standard deviation. Notebooks report
