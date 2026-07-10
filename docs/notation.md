@@ -34,7 +34,7 @@ source or reproducing a derivation.
 | --- | --- | --- | --- | --- |
 | State | $x \in \mathbb{R}^{N_x}$ | $v \in H$ | $\boldsymbol{x}_n \in \mathbb{R}^{N_x}$ | da_py keeps code-facing symbols plain; Takeda and Miyoshi (2026) uses bold finite-dimensional vectors. |
 | True state | $x_n$ or `x_true` | $u$ or $u_n$ | $\boldsymbol{x}_n$ | Code names such as `x_true` remain backticked implementation identifiers. |
-| Observation | $y_n$ or `y_obs` | $y=Hv+\eta$ | $\boldsymbol{y}_n=\boldsymbol{H}\boldsymbol{x}_n+\boldsymbol{\eta}_n$ | The 2026 paper uses bold vectors and matrices in the observation equation. |
+| Observation | $y_n$ or `y_obs` | $y_n=Hu_n+\eta_n$ | $\boldsymbol{y}_n=\boldsymbol{H}\boldsymbol{x}_n+\boldsymbol{\eta}_n$ | The 2026 paper uses bold vectors and matrices in the observation equation. |
 | Observation operator | $H_n$ or $H$ | $H$ | $\boldsymbol{H}\in\mathbb{R}^{N_y\times N_x}$ | da_py uses `H` for both ndarray and callable observations; the paper uses a matrix observation operator. |
 | Observation error covariance | $R_n$ or $R$ | $\Gamma$ or $R$ | $\boldsymbol{R}\in\mathbb{R}^{N_y\times N_y}$ | The paper assumes $\boldsymbol{\eta}_n\sim\mathcal{N}(0,\boldsymbol{R})$. |
 | Ensemble size | $m$ | $m$ | $m\in\mathbb{N}$, $m^*$ | $m^*$ is the minimum ensemble size in the 2026 paper. |
@@ -43,22 +43,24 @@ source or reproducing a derivation.
 | Ensemble mean | $\bar{x}_n$ | $v=m^{-1}\sum_{k=1}^m v^{(k)}$ | $\boldsymbol{x}_n^f=m^{-1}\sum_{k=1}^m\boldsymbol{x}_n^{f(k)}$, $\boldsymbol{x}_n^a$ | Avoid using bare $x$ for the mean in new da_py docs. |
 | Mean ensemble | $\bar{X}_n=[\bar{x}_n,\ldots,\bar{x}_n]$ | $v1=[v,\ldots,v]$ | not named separately | Use only when needed to define anomalies. |
 | Ensemble deviation / anomaly | $A_n=X_n-\bar{X}_n$ | $dV=[v^{(k)}-v]_{k=1}^m$ | $\boldsymbol{V}_n^f=[\boldsymbol{x}_n^{f(1)}-\boldsymbol{x}_n^f,\ldots,\boldsymbol{x}_n^{f(m)}-\boldsymbol{x}_n^f]$, $\boldsymbol{V}_n^a$ | In the paper, $\boldsymbol{V}$ denotes perturbation/anomaly matrices, not the ensemble itself. |
-| Sample covariance | $P_n=(m-1)^{-1}A_nA_n^{\mathsf T}$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | $\boldsymbol{C}_n^f=\boldsymbol{V}_n^f(\boldsymbol{V}_n^f)^\top/(m-1)$ | da_py uses $^{\mathsf T}$ in docs; the paper uses $\top$ for finite-dimensional transpose. Takeda thesis uses $^*$ for Hilbert-space adjoints. |
-| Forecast ensemble | $X_n^f$ | $V^f=[v^{f(k)}]_{k=1}^m$ | $\boldsymbol{x}_n^{f(k)}=\boldsymbol{\Psi}(\boldsymbol{x}_{n-1}^{a(k)})$ | The paper denotes the flow map by $\boldsymbol{\Psi}=\boldsymbol{\Psi}_\tau$. |
-| Analysis ensemble | $X_n^a$ | $V^a=[v^{a(k)}]_{k=1}^m$ | $\boldsymbol{x}_n^{a(k)}=\boldsymbol{x}_n^a+\boldsymbol{v}_n^{a(k)}$ | $\boldsymbol{v}_n^{a(k)}$ is the $k$th column of $\boldsymbol{V}_n^a$. |
-| Forecast covariance | $P_n^f$ | $\operatorname{Cov}_m(V^f)$ | $\boldsymbol{C}_n^f$ | The 2026 paper forms the ETKF gain from $\boldsymbol{C}_n^f$. |
-| Analysis covariance | $P_n^a$ | $\operatorname{Cov}_m(V^a)$ | not explicitly named in the ETKF definition | The analysis spread is represented by $\boldsymbol{V}_n^a$. |
-| Innovation | $y_n-H_n\bar{x}_n^f$ | $y-Hv^f$ | $\boldsymbol{y}_n-\boldsymbol{H}\boldsymbol{x}_n^f$ | Code variable: `dy`; do not typeset `dy` as a differential. |
-| Kalman gain | $K_n=P_n^fH_n^{\mathsf T}(H_nP_n^fH_n^{\mathsf T}+R_n)^{-1}$ | $K=\operatorname{Cov}_m(V^f)H^*(H\operatorname{Cov}_m(V^f)H^*+\Gamma)^{-1}$ | $\boldsymbol{K}_n=\boldsymbol{C}_n^f\boldsymbol{H}^\top(\boldsymbol{H}\boldsymbol{C}_n^f\boldsymbol{H}^\top+\boldsymbol{R})^{-1}$ | The paper uses bold $\boldsymbol{K}_n$ and $\top$. |
-| Transform matrix | $T$ | $T$ | $\boldsymbol{T}_n=(\boldsymbol{I}_m+(m-1)^{-1}(\boldsymbol{V}_n^f)^\top\boldsymbol{H}^\top\boldsymbol{R}^{-1}\boldsymbol{H}\boldsymbol{V}_n^f)^{-1/2}$ | $\boldsymbol{T}_n$ is a matrix square root chosen symmetric positive definite in the paper. |
-| Inflation parameter | $\alpha$ | $\alpha$ or $\rho$ | $\alpha>1$ | The 2026 paper uses multiplicative covariance inflation in Algorithm 3. |
+| Sample covariance | $P_n=(m-1)^{-1}A_n^{\mathsf T}A_n$ | $\operatorname{Cov}_m(V)=(m-1)^{-1}dVdV^*$ | $\boldsymbol{C}_n^f=\boldsymbol{V}_n^f(\boldsymbol{V}_n^f)^\top/(m-1)$ | da_py arrays are row-major, so $A_n^{\mathsf T}A_n$ gives the state covariance. Takeda thesis uses $^*$ for Hilbert-space adjoints. |
+| Forecast ensemble | $X_n^f$ | $\hat{V}_n=[\hat{v}_n^{(k)}]_{k=1}^m$ | $\boldsymbol{x}_n^{f(k)}=\boldsymbol{\Psi}(\boldsymbol{x}_{n-1}^{a(k)})$ | Takeda thesis uses hat notation for prediction/forecast quantities rather than superscript $f$. |
+| Analysis ensemble | $X_n^a$ | $V_n=[v_n^{(k)}]_{k=1}^m$ | $\boldsymbol{x}_n^{a(k)}=\boldsymbol{x}_n^a+\boldsymbol{v}_n^{a(k)}$ | $\boldsymbol{v}_n^{a(k)}$ is the $k$th column of $\boldsymbol{V}_n^a$. |
+| Forecast covariance | $P_n^f$ | $\hat{P}_n=\operatorname{Cov}_m(d\hat{V}_n)$ | $\boldsymbol{C}_n^f$ | The 2026 paper forms the ETKF gain from $\boldsymbol{C}_n^f$. |
+| Analysis covariance | $P_n^a$ | $\operatorname{Cov}_m(V_n)$ | not explicitly named in the ETKF definition | The analysis spread is represented by $\boldsymbol{V}_n^a$. |
+| Innovation | $y_n-H_n\bar{x}_n^f$ | $y_n-H\hat{v}_n$ | $\boldsymbol{y}_n-\boldsymbol{H}\boldsymbol{x}_n^f$ | Code variable: `dy`; do not typeset `dy` as a differential. |
+| Kalman gain | $K_n=P_n^fH_n^{\mathsf T}(H_nP_n^fH_n^{\mathsf T}+R_n)^{-1}$ | $K_n=\hat{P}_nH^*(H\hat{P}_nH^*+R)^{-1}$ | $\boldsymbol{K}_n=\boldsymbol{C}_n^f\boldsymbol{H}^\top(\boldsymbol{H}\boldsymbol{C}_n^f\boldsymbol{H}^\top+\boldsymbol{R})^{-1}$ | The paper uses bold $\boldsymbol{K}_n$ and $\top$. |
+| Transform matrix | $T$ | $T_n\in\mathbb{R}^{m\times m}$ | $\boldsymbol{T}_n=(\boldsymbol{I}_m+(m-1)^{-1}(\boldsymbol{V}_n^f)^\top\boldsymbol{H}^\top\boldsymbol{R}^{-1}\boldsymbol{H}\boldsymbol{V}_n^f)^{-1/2}$ | $\boldsymbol{T}_n$ is a matrix square root chosen symmetric positive definite in the paper. |
+| Inflation parameter | $\alpha$ | $\hat{P}_n^\alpha=\alpha^2\hat{P}_n$, $d\hat{V}_n^\alpha=\alpha d\hat{V}_n$ | $\alpha>1$ | The 2026 paper uses multiplicative covariance inflation in Algorithm 3. |
 | Minimum ensemble size | not used as a package symbol | not part of the ETKF notation here | $m^*=N_+ + 1$ | Added because this is central to the 2026 paper's notation and conclusions. |
 | Error metric | RMSE in examples | problem-dependent | $\mathrm{SE}_n=\|\boldsymbol{x}_n-\boldsymbol{x}_n^a\|^2$, $\mathrm{RMSE}_n$ | Typeset metric names in roman capitals. |
 
 References checked:
 
-- Takeda thesis, Section 2.3.1 and ETKF definitions: $V$, $v$, $v1$, $dV$,
-  and $\operatorname{Cov}_m(V)$.
+- K. Takeda, "Error Analysis of the Ensemble Square Root Filter for Dissipative
+  Dynamical Systems," doctoral thesis, Department of Mathematics, Kyoto
+  University, 2026; see Section 2.3.1 and Definition 4.13 for $V$, $v$, $v1$,
+  $dV$, $\operatorname{Cov}_m(V)$, $\hat{V}_n$, $\hat{P}_n$, and $T_n$.
 - K. Takeda and T. Miyoshi, "Noise-scaled accuracy of the ensemble Kalman filter
   with an instability-based minimum ensemble size," Nonlinear Processes in
   Geophysics, 33, 335--346, 2026.
