@@ -91,10 +91,11 @@ class GaussianModelNoise:
         Returns an array of shape ``(size, Nx)`` whose rows are i.i.d.
         ``N(0, Q)``.
         """
-        if not hasattr(rng, "standard_normal"):
+        if not isinstance(rng, np.random.Generator):
             raise TypeError(
                 "rng must be a numpy.random.Generator "
-                "(e.g. numpy.random.default_rng(seed))"
+                "(e.g. numpy.random.default_rng(seed)); legacy RandomState and "
+                "the global numpy.random module are not accepted"
             )
         z = rng.standard_normal((size, self.Nx))
         if self._diag_std is not None:

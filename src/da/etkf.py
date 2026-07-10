@@ -86,6 +86,31 @@ class ETKF:
         if self.store_ensemble:
             self.Xf.append(self.X.copy())
 
+    def perturb_forecast(self, eta):
+        """Add per-member perturbations to the forecast ensemble.
+
+        Intended for additive Gaussian model noise (see ``da.noise``),
+        applied once per assimilation cycle between the last ``forecast``
+        step and ``update``. The most recent recorded forecast diagnostics
+        (``x_f`` and, with ``store_ensemble=True``, ``Xf``) are refreshed so
+        they stay consistent with the perturbed ensemble the analysis
+        consumes.
+
+        Args:
+        - eta: (m, Nx), one perturbation per ensemble member.
+        """
+        eta = np.asarray(eta, dtype=float)
+        if eta.shape != self.X.shape:
+            raise ValueError(
+                f"eta must match the ensemble shape {self.X.shape}, "
+                f"got {eta.shape}"
+            )
+        self.X = self.X + eta
+        if self.x_f:
+            self.x_f[-1] = self.X.mean(axis=0)
+        if self.store_ensemble and self.Xf:
+            self.Xf[-1] = self.X.copy()
+
     # 更新/解析
     def update(self, y_obs):
         self._update_T(y_obs)

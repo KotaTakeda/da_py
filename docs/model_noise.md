@@ -32,13 +32,18 @@ filt.initialize(X0)
 for k in range(1, cycles + 1):
     for _ in range(n_obs):
         filt.forecast(dt)              # deterministic propagation
-    filt.X += noise.sample(rng, filt.m)  # one draw per member, this cycle
+    filt.perturb_forecast(noise.sample(rng, filt.m))  # one draw per member
     filt.update(y_obs[k])              # deterministic ETKF analysis
 ```
 
 With no noise line (or a zero `Q`), the loop reproduces the deterministic
-filter exactly. Because the sampler is independent of the filter class, the
-same pattern works for `ETKF`, `EnKFN`, `LETKF`, and `PO`.
+filter exactly. `perturb_forecast` also refreshes the most recent recorded
+forecast diagnostics (`x_f` and, with `store_ensemble=True`, `Xf`) so they
+stay consistent with the perturbed ensemble the analysis consumes; it is
+available on `ETKF` and its subclasses (`EnKFN`, `LETKF`). For filters
+without the helper (e.g. `PO`), add the samples directly with
+`filt.X += noise.sample(rng, filt.m)` — note that any forecast diagnostics
+recorded by the filter then describe the deterministic propagation only.
 
 `Q` may be a dense symmetric positive-semidefinite `(Nx, Nx)` matrix —
 rank-deficient covariances such as $\sigma^2 P$ with $P$ an orthogonal

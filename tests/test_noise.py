@@ -119,6 +119,11 @@ def test_invalid_covariances_raise_informative_errors():
         GaussianModelNoise(np.array([1.0, -0.1]))
     with pytest.raises(TypeError, match="numpy.random.Generator"):
         GaussianModelNoise(np.eye(2)).sample(0, 3)
+    # legacy RNG interfaces expose standard_normal but are still rejected
+    with pytest.raises(TypeError, match="numpy.random.Generator"):
+        GaussianModelNoise(np.eye(2)).sample(np.random.RandomState(0), 3)
+    with pytest.raises(TypeError, match="numpy.random.Generator"):
+        GaussianModelNoise(np.eye(2)).sample(np.random, 3)
 
 
 def _run_etkf(noise, rng, cycles=5):
@@ -132,9 +137,28 @@ def _run_etkf(noise, rng, cycles=5):
     for k in range(cycles):
         filt.forecast(0.1)
         if noise is not None:
-            filt.X += noise.sample(rng, filt.m)
+            filt.perturb_forecast(noise.sample(rng, filt.m))
         filt.update(obs[k])
     return filt.X
+
+
+def test_perturb_forecast_keeps_forecast_diagnostics_consistent():
+    filt = ETKF(lambda x, dt: x, np.eye(2), np.eye(2), store_ensemble=True)
+    filt.initialize(np.random.default_rng(20).standard_normal((4, 2)))
+    filt.forecast(0.1)
+
+    eta = np.random.default_rng(21).standard_normal((4, 2))
+    filt.perturb_forecast(eta)
+
+    np.testing.assert_array_equal(filt.x_f[-1], filt.X.mean(axis=0))
+    np.testing.assert_array_equal(filt.Xf[-1], filt.X)
+
+
+def test_perturb_forecast_rejects_wrong_shape():
+    filt = ETKF(lambda x, dt: x, np.eye(2), np.eye(2))
+    filt.initialize(np.zeros((4, 2)))
+    with pytest.raises(ValueError, match="match the ensemble shape"):
+        filt.perturb_forecast(np.zeros((3, 2)))
 
 
 def test_etkf_loop_with_zero_noise_matches_deterministic_run_exactly():
