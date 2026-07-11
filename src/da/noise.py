@@ -57,8 +57,15 @@ class GaussianModelNoise:
             if Q.shape[0] != Q.shape[1]:
                 raise ValueError(f"dense Q must be square, got shape {Q.shape}")
             scale = np.abs(Q).max() if Q.size else 0.0
-            if not np.allclose(Q, Q.T, atol=_SYMMETRY_RTOL * max(scale, 1.0)):
+            # rtol=0: only the scale-relative atol decides, otherwise numpy's
+            # default rtol=1e-5 would accept triangles differing by ~1e-5 of
+            # the entry magnitude on large matrices.
+            if not np.allclose(Q, Q.T, rtol=0.0, atol=_SYMMETRY_RTOL * max(scale, 1.0)):
                 raise ValueError("dense Q must be symmetric")
+            # Symmetrize so eigh (which reads one triangle) sees the same
+            # matrix regardless of which triangle carries the tolerated
+            # rounding asymmetry.
+            Q = 0.5 * (Q + Q.T)
             eigvals, eigvecs = np.linalg.eigh(Q)
             eig_scale = np.abs(eigvals).max() if eigvals.size else 0.0
             if eigvals.min() < -_PSD_RTOL * max(eig_scale, 1.0):

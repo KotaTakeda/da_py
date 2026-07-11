@@ -112,6 +112,22 @@ def test_sampler_fixed_seed_is_reproducible():
     np.testing.assert_array_equal(a, b)
 
 
+def test_symmetry_check_uses_scaled_atol_not_default_rtol():
+    # Off-diagonal triangles differing by 5 on entries of magnitude 1e6:
+    # within numpy's default allclose rtol=1e-5 (10 for these entries), but
+    # far above the intended _SYMMETRY_RTOL-scaled atol (~0.02) — must be
+    # rejected, otherwise eigh would factor only one triangle and the sample
+    # covariance would silently differ from the supplied Q.
+    Q = np.array([[2.0e6, 1.0e6], [1.0e6 + 5.0, 2.0e6]])
+    with pytest.raises(ValueError, match="symmetric"):
+        GaussianModelNoise(Q)
+    # Rounding-level asymmetry within the scaled atol is accepted and
+    # symmetrized before factorization.
+    Q_ok = np.array([[2.0e6, 1.0e6], [1.0e6 + 1.0e-3, 2.0e6]])
+    eta = GaussianModelNoise(Q_ok).sample(np.random.default_rng(9), 3)
+    assert eta.shape == (3, 2)
+
+
 def test_invalid_covariances_raise_informative_errors():
     with pytest.raises(ValueError, match="square"):
         GaussianModelNoise(np.zeros((3, 2)))
