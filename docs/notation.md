@@ -60,11 +60,11 @@ References checked:
   Dynamical Systems*, doctoral thesis, Department of Mathematics, Kyoto
   University, first version February 1, 2025; modified January 1, 2026.
   Available at <https://kotatakeda.github.io/math/pdf/thesis.pdf>. The URL was
-  checked on 2026-07-10. See Sections 2.3.1, 3.1, 4.1--4.3, and Definition 4.13
-  for $\boldsymbol{V}$, the ensemble mean
-  $\overline{v}=\frac{1}{m}\sum_{k} v^{(k)}$, $\overline{v}\mathbf{1}$,
-  $d\boldsymbol{V}$, $\mathrm{Cov}_{m}(\boldsymbol{V})$, $\varpi_{n}$,
-  $\widehat{\boldsymbol{V}}_{n}$, $\widehat{P}_{n}$, and $T_{n}$.
+  checked on 2026-07-10. See Sections 2.3.1, 3.1, 4.1--4.3, and Definition
+  4.13 for $`\boldsymbol{V}`$, the ensemble mean
+  $`\overline{v}=\frac{1}{m}\sum_{k} v^{(k)}`$, $`\overline{v}\mathbf{1}`$,
+  $`d\boldsymbol{V}`$, $`\mathrm{Cov}_{m}(\boldsymbol{V})`$, $`\varpi_{n}`$,
+  $`\widehat{\boldsymbol{V}}_{n}`$, $`\widehat{P}_{n}`$, and $`T_{n}`$.
 - K. Takeda and T. Miyoshi, "Noise-scaled accuracy of the ensemble Kalman filter
   with an instability-based minimum ensemble size," *Nonlinear Processes in
   Geophysics*, 33, 335--346, 2026.
@@ -139,10 +139,10 @@ with $x_{n}^{a} = x_{n}^{f} + K_{n} (y_{n} - H x_{n}^{f})$ and
 $P_{n}^{a} = (I - K_{n} H) P_{n}^{f}$.
 
 **ETKF** decomposes the forecast ensemble into mean and anomalies,
-$X_{n}^{f} = \mathbf{1}\bar{x}_{n}^{f} + A_{n}^{f}$, and forms the analysis in the
-$m$-dimensional ensemble space. In the compact equations below, $A^{f}$ denotes
-the transposed anomaly matrix used by the transform step,
-$A^{f}\in\mathbb{R}^{N_{x}\times m}$:
+$`X_{n}^{f} = \mathbf{1}\bar{x}_{n}^{f} + A_{n}^{f}`$, and forms the analysis
+in the $`m`$-dimensional ensemble space. In the compact equations below,
+$`A^{f}`$ denotes the transposed anomaly matrix used by the transform step,
+$`A^{f}\in\mathbb{R}^{N_{x}\times m}`$:
 
 $$
 \tilde{P} = \left[(m-1) I + (H A^{f})^{\top} R^{-1} (H A^{f})\right]^{-1},
@@ -183,8 +183,8 @@ ensemble with minimal squared-Euclidean cost (solved with the POT package).
 
 ## RMSE convention
 
-See `docs/contributing/notebook_spec.md`: analysis RMSE is
-$\mathrm{RMSE}_{n} = \sqrt{\frac{1}{N_{x}}\sum_{i} (\hat{x}_{n,i}^{a} - x_{n,i})^{2}}$
-with $\hat{x}_{n}^{a}$ the analysis (ensemble-mean) estimate, compared against
-the observation-noise scale
-$\sigma_{\mathrm{obs}} = \sqrt{\mathrm{tr}(R)/N_{y}}$.
+See `docs/contributing/notebook_spec.md`. Analysis RMSE is
+$`\mathrm{RMSE}_{n}=\sqrt{\frac{1}{N_{x}}\sum_{i}(\hat{x}_{n,i}^{a}-x_{n,i})^{2}}`$,
+where $`\hat{x}_{n}^{a}`$ is the analysis (ensemble-mean) estimate. It is
+compared against the observation-noise scale
+$`\sigma_{\mathrm{obs}}=\sqrt{\frac{\mathrm{tr}(R)}{N_{y}}}`$.
