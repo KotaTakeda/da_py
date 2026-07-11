@@ -46,6 +46,8 @@ class LETKF(ETKF):
         c=3.0,
         localization="gaspari-cohn",
         multi_process=False,
+        Q=None,
+        rng=None,
     ):
         """ "
         Args:
@@ -57,8 +59,10 @@ class LETKF(ETKF):
         - c: localization radius
         - localization: str, currently only "gaspari-cohn" is supported
         - multi_process: bool, whether to use multi processing for loop over state variables
+        - Q, rng: model-noise covariance and Generator, applied per forecast
+          step via the inherited ETKF forecast (see da.etkf.ETKF)
         """
-        super().__init__(M, H, R, alpha, store_ensemble)
+        super().__init__(M, H, R, alpha, store_ensemble, Q=Q, rng=rng)
 
         self.c = c
         self.localization = localization

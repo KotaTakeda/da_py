@@ -39,10 +39,12 @@ where $M_n$ advances the model over one assimilation window (numerical
 integration of the underlying ODE/PDE with the fourth-order Runge-Kutta
 scheme, `da.scheme.rk4`).
 
-With additive Gaussian model noise (`da.noise`, see `docs/model_noise.md`)
-the forecast model becomes $x_n = M_n(x_{n-1}) + \eta_n$ with
-$\eta_n \sim N(0, Q)$ drawn independently for each ensemble member at each
-assimilation cycle; the deterministic model is the $Q = 0$ special case.
+With additive Gaussian model noise (the `Q` argument of the ensemble
+filters, see `docs/model_noise.md`) each integration step of the forecast
+becomes stochastic, $x \leftarrow M(x, \delta t) + \eta$ with
+$\eta \sim N(0, Q)$ drawn independently for each ensemble member at every
+`forecast(dt)` step — the same per-step timing as `ExKF`'s $Q$; the
+deterministic model is the $Q = 0$ special case.
 
 ## Models
 

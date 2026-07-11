@@ -1,8 +1,10 @@
 import numpy as np
 import pytest
 
+from da.enkfn import EnKFN
 from da.etkf import ETKF
-from da.noise import GaussianModelNoise, sample_model_noise
+from da.letkf import LETKF
+from da.noise import GaussianModelNoise
 
 
 def orthogonal_projection(Nx, rank, seed=0):
@@ -36,7 +38,12 @@ def test_projection_fixture_rejects_non_idempotent_matrix():
         assert_projection(np.array([[1.0, 0.5], [0.0, 1.0]]))
 
 
-def test_zero_covariance_reproduces_deterministic_forecast_exactly():
+# ---------------------------------------------------------------------------
+# GaussianModelNoise sampler
+# ---------------------------------------------------------------------------
+
+
+def test_zero_covariance_gives_exact_zero_samples():
     rng = np.random.default_rng(0)
     # sigma = 0: dense zero matrix and zero diagonal variances give exact zeros
     for Q in (np.zeros((4, 4)), np.zeros(4)):
@@ -47,7 +54,7 @@ def test_zero_covariance_reproduces_deterministic_forecast_exactly():
 
 def test_sigma_zero_projection_covariance_gives_exact_zero():
     P = orthogonal_projection(6, 2)
-    eta = sample_model_noise(np.random.default_rng(1), 0.0 * P, 5)
+    eta = GaussianModelNoise(0.0 * P).sample(np.random.default_rng(1), 5)
     assert np.all(eta == 0.0)
 
 
@@ -83,27 +90,26 @@ def test_diagonal_variances_match():
     assert np.all(eta[:, 0] == 0.0)
 
 
-def test_samples_independent_across_members_and_cycles():
+def test_samples_independent_across_members_and_steps():
     Nx, sigma = 4, 1.0
     noise = GaussianModelNoise(sigma**2 * np.eye(Nx))
     rng = np.random.default_rng(7)
-    cycles = np.stack([noise.sample(rng, 6) for _ in range(20_000)])  # (n, m, Nx)
+    steps = np.stack([noise.sample(rng, 6) for _ in range(20_000)])  # (n, m, Nx)
 
-    # members within a cycle are uncorrelated
-    member_corr = np.mean(cycles[:, 0, :] * cycles[:, 1, :])
+    # members within a step are uncorrelated
+    member_corr = np.mean(steps[:, 0, :] * steps[:, 1, :])
     assert abs(member_corr) < 0.02
-    # consecutive cycles are uncorrelated (and not identical draws)
-    cycle_corr = np.mean(cycles[:-1, 0, :] * cycles[1:, 0, :])
-    assert abs(cycle_corr) < 0.02
-    assert not np.array_equal(cycles[0], cycles[1])
+    # consecutive steps are uncorrelated (and not identical draws)
+    step_corr = np.mean(steps[:-1, 0, :] * steps[1:, 0, :])
+    assert abs(step_corr) < 0.02
+    assert not np.array_equal(steps[0], steps[1])
 
 
-def test_fixed_seed_is_reproducible():
+def test_sampler_fixed_seed_is_reproducible():
     Q = 0.3 * orthogonal_projection(5, 2, seed=8)
     a = GaussianModelNoise(Q).sample(np.random.default_rng(42), 9)
     b = GaussianModelNoise(Q).sample(np.random.default_rng(42), 9)
     np.testing.assert_array_equal(a, b)
-    np.testing.assert_array_equal(a, sample_model_noise(np.random.default_rng(42), Q, 9))
 
 
 def test_invalid_covariances_raise_informative_errors():
@@ -126,51 +132,91 @@ def test_invalid_covariances_raise_informative_errors():
         GaussianModelNoise(np.eye(2)).sample(np.random, 3)
 
 
-def _run_etkf(noise, rng, cycles=5):
-    """Small linear-model ETKF loop; noise=None runs the deterministic filter."""
+# ---------------------------------------------------------------------------
+# ETKF(Q=..., rng=...) constructor integration
+# ---------------------------------------------------------------------------
+
+
+def _run_etkf(Q, rng, cycles=5, n_obs=2):
+    """Small linear-model ETKF loop; Q=None runs the deterministic filter."""
     H = np.eye(3)
     R = 0.5 * np.eye(3)
-    filt = ETKF(lambda x, dt: 0.95 * x, H, R, alpha=1.02)
+    filt = ETKF(lambda x, dt: 0.95 * x, H, R, alpha=1.02, Q=Q, rng=rng)
     X0 = np.random.default_rng(10).standard_normal((6, 3))
     filt.initialize(X0.copy())
     obs = np.random.default_rng(11).standard_normal((cycles, 3))
     for k in range(cycles):
-        filt.forecast(0.1)
-        if noise is not None:
-            filt.perturb_forecast(noise.sample(rng, filt.m))
+        for _ in range(n_obs):
+            filt.forecast(0.1)
         filt.update(obs[k])
     return filt.X
 
 
-def test_perturb_forecast_keeps_forecast_diagnostics_consistent():
-    filt = ETKF(lambda x, dt: x, np.eye(2), np.eye(2), store_ensemble=True)
-    filt.initialize(np.random.default_rng(20).standard_normal((4, 2)))
+def test_etkf_without_Q_matches_zero_Q_exactly():
+    deterministic = _run_etkf(None, None)
+    zero_noise = _run_etkf(np.zeros(3), np.random.default_rng(12))
+    np.testing.assert_array_equal(deterministic, zero_noise)
+
+
+def test_etkf_with_Q_is_seed_reproducible():
+    Q = 0.1 * np.eye(3)
+    a = _run_etkf(Q, np.random.default_rng(13))
+    b = _run_etkf(Q, np.random.default_rng(13))
+    np.testing.assert_array_equal(a, b)
+    c = _run_etkf(Q, np.random.default_rng(14))
+    assert not np.array_equal(a, c)
+
+
+def test_noise_is_applied_at_every_forecast_step():
+    # identity model: any change in X between forecast calls is model noise
+    filt = ETKF(lambda x, dt: x, np.eye(2), np.eye(2),
+                Q=np.eye(2), rng=np.random.default_rng(15))
+    filt.initialize(np.zeros((4, 2)))
     filt.forecast(0.1)
+    after_first = filt.X.copy()
+    assert not np.array_equal(after_first, np.zeros((4, 2)))
+    filt.forecast(0.1)
+    assert not np.array_equal(filt.X, after_first)
 
-    eta = np.random.default_rng(21).standard_normal((4, 2))
-    filt.perturb_forecast(eta)
 
+def test_forecast_diagnostics_include_model_noise():
+    filt = ETKF(lambda x, dt: x, np.eye(2), np.eye(2), store_ensemble=True,
+                Q=np.eye(2), rng=np.random.default_rng(16))
+    filt.initialize(np.random.default_rng(17).standard_normal((4, 2)))
+    filt.forecast(0.1)
     np.testing.assert_array_equal(filt.x_f[-1], filt.X.mean(axis=0))
     np.testing.assert_array_equal(filt.Xf[-1], filt.X)
 
 
-def test_perturb_forecast_rejects_wrong_shape():
-    filt = ETKF(lambda x, dt: x, np.eye(2), np.eye(2))
-    filt.initialize(np.zeros((4, 2)))
-    with pytest.raises(ValueError, match="match the ensemble shape"):
-        filt.perturb_forecast(np.zeros((3, 2)))
+def test_enkfn_and_letkf_accept_Q():
+    H = np.eye(3)
+    R = np.eye(3)
+    X0 = np.random.default_rng(18).standard_normal((6, 3))
+    y = np.array([0.1, -0.2, 0.3])
+    for factory in (
+        lambda rng: EnKFN(lambda x, dt: x, H, R, Q=0.1 * np.eye(3), rng=rng),
+        lambda rng: LETKF(lambda x, dt: x, H, R, c=2.0, Q=0.1 * np.eye(3), rng=rng),
+    ):
+        runs = []
+        for seed in (19, 19, 20):
+            filt = factory(np.random.default_rng(seed))
+            filt.initialize(X0.copy())
+            filt.forecast(0.1)
+            filt.update(y)
+            runs.append(filt.X.copy())
+        np.testing.assert_array_equal(runs[0], runs[1])  # same seed reproduces
+        assert not np.array_equal(runs[0], runs[2])  # different seed differs
 
 
-def test_etkf_loop_with_zero_noise_matches_deterministic_run_exactly():
-    deterministic = _run_etkf(None, None)
-    zero_noise = _run_etkf(GaussianModelNoise(np.zeros(3)), np.random.default_rng(12))
-    np.testing.assert_array_equal(deterministic, zero_noise)
-
-
-def test_etkf_loop_with_model_noise_is_seed_reproducible():
-    noise = GaussianModelNoise(0.1 * np.eye(3))
-    a = _run_etkf(noise, np.random.default_rng(13))
-    b = _run_etkf(noise, np.random.default_rng(13))
-    np.testing.assert_array_equal(a, b)
-    c = _run_etkf(noise, np.random.default_rng(14))
-    assert not np.array_equal(a, c)
+def test_constructor_validation_errors():
+    M = lambda x, dt: x  # noqa: E731
+    H = R = np.eye(2)
+    with pytest.raises(TypeError, match="numpy.random.Generator"):
+        ETKF(M, H, R, Q=np.eye(2))  # Q without rng
+    with pytest.raises(TypeError, match="numpy.random.Generator"):
+        ETKF(M, H, R, Q=np.eye(2), rng=np.random.RandomState(0))
+    with pytest.raises(ValueError, match="rng has no effect without Q"):
+        ETKF(M, H, R, rng=np.random.default_rng(0))
+    with pytest.raises(ValueError, match="state dimension"):
+        filt = ETKF(M, H, R, Q=np.eye(3), rng=np.random.default_rng(0))
+        filt.initialize(np.zeros((4, 2)))  # Nx=2 but Q is 3x3

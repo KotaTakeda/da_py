@@ -1,21 +1,16 @@
 """Additive Gaussian model noise for ensemble forecasts.
 
-Implements the stochastic forecast model
+Sampling engine behind the ``Q=`` argument of the ensemble filters
+(``ETKF``, ``EnKFN``, ``LETKF``), which implement the stochastic forecast
+model
 
-    x_{n+1}^{f,(k)} = M(x_n^{a,(k)}) + eta_{n+1}^{(k)},
-    eta_{n+1}^{(k)} ~ i.i.d. N(0, Q),
+    x <- M(x, dt) + eta,    eta ~ i.i.d. N(0, Q),
 
-by sampling one independent perturbation per ensemble member. Sampling is
-kept out of the deterministic analysis transforms: the driver loop applies it
-between the last forecast step of an assimilation cycle and the analysis
-update, which is the only place the cycle boundary is known,
+with one independent perturbation per ensemble member at every
+``forecast(dt)`` step — the same per-step timing as ``ExKF``'s ``Q`` in the
+covariance propagation. The deterministic analysis transforms are untouched.
 
-    noise = GaussianModelNoise(Q)
-    for each cycle:
-        for _ in range(n_obs):
-            filt.forecast(dt)
-        filt.X += noise.sample(rng, m)
-        filt.update(y_obs)
+    filt = ETKF(M, H, R, alpha=1.02, Q=Q, rng=np.random.default_rng(seed))
 
 This is additive *stochastic* inflation (Gaussian model noise). It is distinct
 from the multiplicative anomaly inflation ``alpha`` of the ensemble filters
@@ -39,10 +34,10 @@ class GaussianModelNoise:
     ``Q`` may be a dense symmetric positive-semidefinite matrix of shape
     ``(Nx, Nx)`` — rank-deficient covariances are supported — or a 1-D array
     of per-component variances of shape ``(Nx,)`` for diagonal noise. The
-    factorization is computed once at construction and reused across cycles.
+    factorization is computed once at construction and reused across steps.
 
     For fully custom noise (e.g. a user-supplied sampler), no wrapper is
-    needed: add the samples to the ensemble directly in the driver loop.
+    needed: add the samples to ``filt.X`` directly in the driver loop.
     """
 
     def __init__(self, Q):
@@ -101,13 +96,3 @@ class GaussianModelNoise:
         if self._diag_std is not None:
             return z * self._diag_std
         return z @ self._factor.T
-
-
-def sample_model_noise(rng, Q, size):
-    """Draw ``size`` i.i.d. ``N(0, Q)`` perturbations, one row per member.
-
-    Convenience wrapper around :class:`GaussianModelNoise` for one-off use;
-    construct the class once instead when sampling every cycle, so the
-    factorization of ``Q`` is reused.
-    """
-    return GaussianModelNoise(Q).sample(rng, size)

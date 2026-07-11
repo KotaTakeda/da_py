@@ -11,13 +11,13 @@ seeding, so a single seed at the top of a script reproduces the entire run.
 ```python
 rng = np.random.default_rng(seed)
 X0 = attractor_ensemble(step, rng, x0, dt, m)
-eta = noise.sample(rng, m)
+filt = ETKF(model_step, H, R, Q=Q, rng=rng)  # model noise driven by rng
 ```
 
 ## Survey (issue #50)
 
 Status of RNG usage across the project as of the introduction of
-`da.noise`:
+model noise (`da.noise`):
 
 | Area | RNG style |
 | --- | --- |
@@ -25,7 +25,7 @@ Status of RNG usage across the project as of the introduction of
 | `examples/notebooks/*` | explicit `default_rng(seed)` |
 | `tests/*` (except PO tests) | explicit `default_rng(seed)` |
 | `da.viz` helpers | explicit `default_rng(seed)` |
-| `da.noise` (new) | explicit `Generator` argument |
+| `ETKF`/`EnKFN`/`LETKF` model noise `Q` (new) | explicit `Generator` via the `rng` constructor argument |
 | `da.pf.ParticleFilter` | **legacy**: global `np.random.normal/choice/rand` (jitter, resampling) |
 | `da.po.PO` | **legacy**: global `np.random.multivariate_normal` (observation perturbations); tests must use `np.random.seed()` |
 

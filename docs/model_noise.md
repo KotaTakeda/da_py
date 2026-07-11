@@ -1,70 +1,78 @@
 # Gaussian Model Noise (Additive Stochastic Inflation)
 
-`da.noise` implements the stochastic state-space forecast model
+The ensemble filters (`ETKF`, `EnKFN`, `LETKF`) accept a model-noise
+covariance `Q`, turning the deterministic forecast step into the stochastic
+forecast model
 
 $$
-x_{n+1}^{f,(k)} = M\!\left(x_n^{a,(k)}\right) + \eta_{n+1}^{(k)},
+x^{(k)} \leftarrow M\!\left(x^{(k)}, \delta t\right) + \eta^{(k)},
 \qquad
-\eta_{n+1}^{(k)} \overset{\mathrm{i.i.d.}}{\sim} N(0, Q),
+\eta^{(k)} \overset{\mathrm{i.i.d.}}{\sim} N(0, Q),
 $$
 
-drawing one independent perturbation per ensemble member per assimilation
-cycle. The perturbation is added **after** deterministic model propagation and
-**before** the analysis step; the ETKF analysis transform itself stays
-deterministic.
+with one independent perturbation per ensemble member at **every
+`forecast(dt)` step**. The analysis transform itself stays deterministic.
 
-## Where the noise is applied
-
-The filters in this package advance sub-steps with `forecast(dt)` — typically
-several times per assimilation cycle — so only the driver loop knows where a
-cycle ends. Model noise is therefore applied in the driver loop, not inside
-the filter classes:
+## Usage
 
 ```python
 import numpy as np
-from da import ETKF, GaussianModelNoise
+from da import ETKF
 
-rng = np.random.default_rng(7)
-noise = GaussianModelNoise(Q)      # validates Q once, caches the factorization
-
-filt = ETKF(model_step, H, R, alpha=1.02)
+filt = ETKF(model_step, H, R, alpha=1.02,
+            Q=Q, rng=np.random.default_rng(7))
 filt.initialize(X0)
 for k in range(1, cycles + 1):
     for _ in range(n_obs):
-        filt.forecast(dt)              # deterministic propagation
-    filt.perturb_forecast(noise.sample(rng, filt.m))  # one draw per member
-    filt.update(y_obs[k])              # deterministic ETKF analysis
+        filt.forecast(dt)   # stochastic propagation: M(x, dt) + eta
+    filt.update(y_obs[k])   # deterministic analysis
 ```
 
-With no noise line (or a zero `Q`), the loop reproduces the deterministic
-filter exactly. `perturb_forecast` also refreshes the most recent recorded
-forecast diagnostics (`x_f` and, with `store_ensemble=True`, `Xf`) so they
-stay consistent with the perturbed ensemble the analysis consumes; it is
-available on `ETKF` and its subclasses (`EnKFN`, `LETKF`). For filters
-without the helper (e.g. `PO`), add the samples directly with
-`filt.X += noise.sample(rng, filt.m)` — note that any forecast diagnostics
-recorded by the filter then describe the deterministic propagation only.
+The driver loop is unchanged from the deterministic case. With `Q=None`
+(default) or a zero `Q`, the filter reproduces the deterministic run exactly.
+`rng` must be an explicit `numpy.random.Generator` whenever `Q` is given, so
+one seed reproduces the whole run. The noise is added before the forecast
+diagnostics are recorded, so `x_f` (and `Xf` under `store_ensemble=True`)
+describe the same perturbed ensemble the analysis consumes.
+
+## Timing semantics: per forecast step
+
+`Q` acts per `forecast(dt)` call — the same timing as `ExKF(Q=...)`, which
+adds the identical `Q` to the covariance propagation at every forecast step,
+and as `ParticleFilter(add_inflation=...)`. When the assimilation window
+spans $n_{\mathrm{obs}}$ steps, the noise accumulated over one cycle has
+covariance of roughly $n_{\mathrm{obs}}\, Q$ (exactly that for static
+dynamics). To match a specification stated per assimilation cycle,
+use $Q_{\mathrm{step}} = Q_{\mathrm{cycle}} / n_{\mathrm{obs}}$.
+
+## Covariance forms and custom noise
 
 `Q` may be a dense symmetric positive-semidefinite `(Nx, Nx)` matrix —
 rank-deficient covariances such as $\sigma^2 P$ with $P$ an orthogonal
-projection are supported via an eigendecomposition — or a 1-D vector of
-per-component variances for diagonal noise. For fully custom perturbations,
-skip the wrapper and add your own samples to `filt.X` directly.
+projection are supported via an eigendecomposition, factorized once and
+reused — or a 1-D vector of per-component variances for diagonal noise.
+Shapes, symmetry, and positive-semidefiniteness are validated with
+informative errors (the state dimension is checked at `initialize`).
+
+For fully custom perturbations (e.g. a user-supplied sampler), no wrapper is
+needed: leave `Q=None` and add your own samples to `filt.X` in the driver
+loop between the last `forecast(dt)` and `update()` — note that the recorded
+forecast diagnostics then describe the unperturbed propagation.
 
 ## Not to be confused with
 
 | Mechanism | Where | Nature |
 | --- | --- | --- |
-| **Gaussian model noise** (`da.noise`, this page) | forecast, once per cycle | stochastic, additive: $x^f \mathrel{+}= \eta$, $\eta \sim N(0, Q)$ |
+| **Gaussian model noise** `Q` (`ETKF`/`EnKFN`/`LETKF`, this page) | forecast, every `forecast(dt)` step | stochastic, additive: $x \mathrel{+}= \eta$, $\eta \sim N(0, Q)$ per member |
 | **Multiplicative anomaly inflation** `alpha` (`ETKF`, `LETKF`; adaptive in `EnKFN`) | analysis | deterministic rescaling: $A \to \alpha A$, so $P^f \to \alpha^2 P^f$ |
 | **Additive covariance regularization** `PO(additive_inflation=True)` | analysis | deterministic: $P^f \to P^f + \alpha I$; no sampling despite the name |
 | **Observation perturbations** (`PO`) | analysis | stochastic replicates $y + \varepsilon^{(k)}$, $\varepsilon^{(k)} \sim N(0, R)$ — part of the stochastic-EnKF analysis, not model error |
-| **`ParticleFilter(add_inflation=sigma)`** | forecast, every `forecast(dt)` sub-step | legacy stochastic jitter $N(0, \sigma^2 I)$ from the global RNG; equivalent to isotropic model noise but per sub-step, not per cycle |
-| **`ExKF(Q=...)`** | covariance propagation | the same model-error covariance $Q$ used deterministically: $P^f = F P^a F^{\mathsf T} + Q$; nothing is sampled |
+| **`ParticleFilter(add_inflation=sigma)`** | forecast, every `forecast(dt)` step | legacy isotropic variant of the same mechanism: $N(0, \sigma^2 I)$ jitter drawn from the global RNG |
+| **`ExKF(Q=...)`** | covariance propagation, every `forecast(dt)` step | the same model-error covariance $Q$ with the same timing, used deterministically: $P^f = F P^a F^{\mathsf T} + Q$; nothing is sampled |
 
 ## RNG
 
-`GaussianModelNoise.sample(rng, size)` takes an explicit
-`numpy.random.Generator`, following the project RNG policy
+The filters take an explicit `numpy.random.Generator` via the `rng`
+constructor argument whenever `Q` is given, following the project RNG policy
 (`docs/rng_policy.md`). A fixed seed makes the full filtering run
 reproducible.
