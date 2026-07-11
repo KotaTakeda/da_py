@@ -45,6 +45,9 @@ def estimate_l1_enkfn_dual(
 ):
     r"""Estimate the EnKF-N anomaly inflation factor in DAPPER's dual form.
 
+    This is the later Gaussian-scale-mixture/DAPPER dual formulation, not a
+    direct implementation of the nonquadratic ETKF-N analysis in Bocquet (2011).
+
     Parameters follow the ETKF internals of this package: ``dY`` has shape
     ``(Ny, m)``, ``dy`` has shape ``(Ny,)``, and ``R`` has shape ``(Ny, Ny)``.
     The scalar optimized here is ``l1`` itself, the anomaly inflation factor.
