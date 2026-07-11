@@ -49,17 +49,6 @@ from da.l96 import lorenz96
 from da.scheme import rk4
 ```
 
-**Inflation convention.**
-
-Multiplicative inflation parameters named `alpha` are anomaly inflation factors:
-
-```text
-A -> alpha * A
-Pf -> alpha^2 * Pf
-```
-
-This convention applies to `ETKF`, `LETKF`, and the non-additive `PO` update. In `PO(additive_inflation=True)`, `alpha` remains an additive covariance inflation amplitude.
-
 ## Examples
 
 `examples/` は代表例を次の3層に整理しています。
@@ -92,6 +81,19 @@ python examples/scripts/l63_etkf.py
 python examples/scripts/l96_letkf.py
 python examples/scripts/nse2d_etkf.py
 ```
+
+
+**Inflation convention.**
+
+Multiplicative inflation parameters named `alpha` are anomaly inflation factors:
+
+```text
+A -> alpha * A
+Pf -> alpha^2 * Pf
+```
+
+This convention applies to `ETKF`, `LETKF`, and the non-additive `PO` update. In `PO(additive_inflation=True)`, `alpha` remains an additive covariance inflation amplitude.
+
 
 ## Visualization
 
