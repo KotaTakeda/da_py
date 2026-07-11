@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.linalg import inv
 
+from da.noise import GaussianModelNoise
+
 # ==========================================
 # EnsembleTransformKalmanFilter(ETKF)
 # Refs.
@@ -35,6 +37,8 @@ class ETKF:
         R,
         alpha=1.0,
         store_ensemble=False,
+        Q=None,
+        rng=None,
     ):
         """
         Args:
@@ -43,6 +47,13 @@ class ETKF:
         - R: (Ny, Ny), covariance of observation noise
         - alpha: (float>=1), anomaly inflation factor, A -> alpha*A and Pf -> alpha^2*Pf
         - store_ensemble: bool, whether to store ensemble members at each step
+        - Q: model-noise covariance for the stochastic forecast model
+          x <- M(x, dt) + eta, eta ~ N(0, Q), drawn independently per member
+          at every forecast(dt) call (same per-step timing as ExKF's Q).
+          Dense symmetric PSD (Nx, Nx) — rank-deficient allowed — or a 1-D
+          vector of per-component variances. Defaults to None (deterministic).
+        - rng: numpy.random.Generator driving the model noise; required when
+          Q is given (see docs/rng_policy.md).
         """
         self.M = M
         self.H = H
@@ -57,11 +68,32 @@ class ETKF:
 
         self.store_ensemble = store_ensemble
 
+        if Q is None:
+            if rng is not None:
+                raise ValueError("rng has no effect without Q; pass Q as well")
+            self.Q = None
+            self._model_noise = None
+            self.rng = None
+        else:
+            if not isinstance(rng, np.random.Generator):
+                raise TypeError(
+                    "rng must be a numpy.random.Generator when Q is given "
+                    "(e.g. numpy.random.default_rng(seed))"
+                )
+            self.Q = np.asarray(Q, dtype=float)
+            self._model_noise = GaussianModelNoise(self.Q)
+            self.rng = rng
+
     # 初期アンサンブル
     def initialize(self, X_0):
         m, Nx = X_0.shape  # ensemble shape
         self.Nx = Nx
         self.m = m
+        if self._model_noise is not None and self._model_noise.Nx != Nx:
+            raise ValueError(
+                f"Q is for state dimension {self._model_noise.Nx}, "
+                f"but the ensemble has Nx = {Nx}"
+            )
         self.t = 0.0
         self.X = X_0.copy()
         self.I = np.eye(m)
@@ -80,6 +112,13 @@ class ETKF:
         # アンサンブルで予測
         for i, s in enumerate(self.X):
             self.X[i] = self.M(s, dt)
+
+        # Additive Gaussian model noise: x <- M(x, dt) + eta, eta ~ N(0, Q),
+        # one independent draw per member per forecast step, applied before
+        # the forecast diagnostics are recorded so x_f/Xf stay consistent
+        # with the ensemble the analysis consumes.
+        if self._model_noise is not None:
+            self.X = self.X + self._model_noise.sample(self.rng, self.m)
 
         self.t += dt
         self.x_f.append(self.X.mean(axis=0))

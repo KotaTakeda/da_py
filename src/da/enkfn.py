@@ -237,10 +237,14 @@ class EnKFN(ETKF):
         method="newton",
         store_ensemble=False,
         store_diagnostics=True,
+        Q=None,
+        rng=None,
     ):
         if alpha != 1.0:
             raise ValueError("EnKFN estimates total anomaly inflation; use alpha=1.0")
-        super().__init__(M, H, R, alpha=alpha, store_ensemble=store_ensemble)
+        super().__init__(
+            M, H, R, alpha=alpha, store_ensemble=store_ensemble, Q=Q, rng=rng
+        )
         self.R_cholesky = np.linalg.cholesky(self.R)
         self.xN = xN
         self.g = g

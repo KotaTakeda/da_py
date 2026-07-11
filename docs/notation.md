@@ -15,6 +15,8 @@ author's thesis notation.
 | $H_{n}$ | linear observation operator or its local linear representation |
 | $R_{n}$ | observation-error covariance |
 | $B$ | background-error covariance used by 3DVar |
+| $Q$ | model-error (model-noise) covariance |
+| $\eta_{n}$ | additive Gaussian model noise, $\eta_{n} \sim N(0, Q)$ |
 | $P_{n}^{f}$, $P_{n}^{a}$ | forecast / analysis error covariance |
 | $X_{n} \in \mathbb{R}^{m \times N_{x}}$ | ensemble matrix whose rows are members |
 | $\bar{x}_{n}$ | ensemble mean |
@@ -86,6 +88,13 @@ y_{n} = H_{n} x_{n} + \varepsilon_{n}, \quad \varepsilon_{n} \sim N(0, R_{n}),
 where $M_{n}$ advances the model over one assimilation window (numerical
 integration of the underlying ODE/PDE with the fourth-order Runge-Kutta
 scheme, `da.scheme.rk4`).
+
+With additive Gaussian model noise (the `Q` argument of the ensemble
+filters, see `docs/model_noise.md`) each integration step of the forecast
+becomes stochastic, $x \leftarrow M(x, \delta t) + \eta$ with
+$\eta \sim N(0, Q)$ drawn independently for each ensemble member at every
+`forecast(dt)` step — the same per-step timing as `ExKF`'s $Q$; the
+deterministic model is the $Q = 0$ special case.
 
 ## Models
 

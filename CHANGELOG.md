@@ -31,6 +31,15 @@ metadata.
   `examples/example_registry.json` and documented in `docs/examples.md`.
 - `da.l96.two_thirds_observation`, a reusable constructor for the periodic 2/3
   Lorenz-96 partial-observation operator.
+- Additive Gaussian model noise (additive stochastic inflation) for the
+  ensemble filters: `ETKF`, `EnKFN`, and `LETKF` accept `Q` and `rng`
+  constructor arguments and apply `x <- M(x, dt) + eta`, `eta ~ N(0, Q)`,
+  independently per member at every `forecast(dt)` step — the same per-step
+  timing as `ExKF`'s `Q`. Supports dense positive-semidefinite (including
+  rank-deficient) and diagonal covariances, validated with informative
+  errors; `rng` must be an explicit `numpy.random.Generator`. The sampling
+  engine lives in `da.noise`. Documented in `docs/model_noise.md` together
+  with the project RNG policy (`docs/rng_policy.md`).
 
 ## 0.7.0 - 2026-07-06
 
