@@ -49,7 +49,7 @@ from da.l96 import lorenz96
 from da.scheme import rk4
 ```
 
-## Inflation convention
+**Inflation convention.**
 
 Multiplicative inflation parameters named `alpha` are anomaly inflation factors:
 
