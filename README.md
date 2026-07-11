@@ -1,6 +1,8 @@
-# data assimilation py
+# da_py
 
-データ同化用の Python コードです。Lorenz63、Lorenz96などの低次元力学系と、Particle Filter、ETKF、LETKF、3DVar などのデータ同化手法を含みます。
+研究・数値実験向けのPythonデータ同化パッケージです。Lorenz-63、
+Lorenz-96、2次元Navier-Stokes方程式のモデルと、3DVar、ExKF、
+Particle Filter、ETKF、LETKF、ETPF、EnKF-Nを含みます。
 
 > 開発中のコードも多いため、研究・実験用途を主な対象としています。
 
@@ -39,6 +41,7 @@ pip install -e ".[dev]"
 
 ```py
 from da.etkf import ETKF
+from da.enkfn import EnKFN
 from da.exkf import ExKF
 from da.pf import ParticleFilter
 from da.l63 import lorenz63
@@ -65,26 +68,30 @@ This convention applies to `ETKF`, `LETKF`, and the non-additive `PO` update. In
 - `examples/notebooks/`: 数式説明つきの最小 tutorial notebook。
 - `examples/archive/`: 旧 notebook/script/PDF/配列データの退避先。研究履歴として保持しますが、現 API との同期対象ではありません。
 
-代表例メタデータの運用上の正本は `examples/example_registry.json` です。数式記号は `docs/notation.md`、代表設定一覧は `docs/examples.md` を参照してください。
+代表例メタデータの運用上の正本は
+[`examples/example_registry.json`](examples/example_registry.json)です。共通記号は
+[`docs/notation.md`](docs/notation.md)、設定と実行方法は
+[`docs/examples.md`](docs/examples.md)を参照してください。
 
-代表 script:
+| Model | Filter | Script | Notebook |
+| --- | --- | --- | --- |
+| Lorenz-63 | 3DVar / ExKF | [`l63_3dvar_exkf.py`](examples/scripts/l63_3dvar_exkf.py) | [`l63_3dvar_exkf.ipynb`](examples/notebooks/l63_3dvar_exkf.ipynb) |
+| Lorenz-63 | Particle Filter | [`l63_pf.py`](examples/scripts/l63_pf.py) | [`l63_pf.ipynb`](examples/notebooks/l63_pf.ipynb) |
+| Lorenz-63 | ETKF | [`l63_etkf.py`](examples/scripts/l63_etkf.py) | [`l63_etkf.ipynb`](examples/notebooks/l63_etkf.ipynb) |
+| Lorenz-63 | ETPF | [`l63_etpf.py`](examples/scripts/l63_etpf.py) | [`l63_etpf.ipynb`](examples/notebooks/l63_etpf.ipynb) |
+| Lorenz-96 | ETKF | [`l96_etkf.py`](examples/scripts/l96_etkf.py) | [`l96_etkf.ipynb`](examples/notebooks/l96_etkf.ipynb) |
+| Lorenz-96 | LETKF | [`l96_letkf.py`](examples/scripts/l96_letkf.py) | [`l96_letkf.ipynb`](examples/notebooks/l96_letkf.ipynb) |
+| Lorenz-96 | EnKF-N / tuned ETKF | [`l96_enkfn.py`](examples/scripts/l96_enkfn.py) | [`l96_enkfn.ipynb`](examples/notebooks/l96_enkfn.ipynb) |
+| NSE2D | ETKF | [`nse2d_etkf.py`](examples/scripts/nse2d_etkf.py) | [`nse2d_etkf.ipynb`](examples/notebooks/nse2d_etkf.ipynb) |
 
-- `examples/scripts/l63_3dvar_exkf.py`
-- `examples/scripts/l63_pf.py`
-- `examples/scripts/l63_etkf.py`
-- `examples/scripts/l63_etpf.py` (`POT` がない環境では skip)
-- `examples/scripts/l96_etkf.py`
-- `examples/scripts/l96_letkf.py`
-- `examples/scripts/nse2d_etkf.py`
+ETPFにはoptional dependencyのPOTが必要です。各scriptの小規模なデフォルト設定は
+動作確認とbenchmarkの把握を目的としており、主要な設定はCLI引数で変更できます。
 
 ```sh
 python examples/scripts/l63_etkf.py
 python examples/scripts/l96_letkf.py
 python examples/scripts/nse2d_etkf.py
 ```
-
-将来的には QMC、Henon、L96 PF、NSE2D partial-observation/synchronization、
-GitHub Pages へ埋め込む notebook tutorial を整備する予定です。
 
 ## Visualization
 
@@ -124,82 +131,3 @@ with viz.style_context():
 
 `matplotlib` + `numpy` があれば図を生成でき、`seaborn` は任意です。作例は
 `examples/scripts/l96_etkf.py`, `examples/scripts/nse2d_etkf.py` を参照してください。
-
-2D NSE の DA 検証は段階的に行います。ETKF の前段として、低モード観測のみで
-同期するか(直接挿入/ナッジング)を `examples/archive/nse2d_synchronization.py` で
-検証できます(`NSE2DTorus.project_low_modes` / `project_high_modes` を使用)。
-その後段の Kelly 型 ETKF ベンチマーク(自由発展/全モード/低モード/
-高モードのみ観測の比較)は `examples/archive/nse2d_partial_obs_enkf.py` を参照してください。
-
-## OSSE settings
-
-### Example 1
-
-```text
-- Lorenz63
-  - s = 10
-  - b = 8/3
-  - r = 28
-- Simulate
-  - scheme = RK4
-  - dt = 0.01
-  - N = 20000
-- Obs.
-  - r = 1.0
-  - H = I_3
-  - obs_per = 5
-  - spin_up = N/2
-- Assimilate
-  - PF
-    - m = 10 ~ 80 by 10
-    - h = 0.0 ~ 0.4 by 0.04
-```
-
-### Example 2
-
-Reference: P. J. Leeuwen, Y. Cheng, and S. Reich, *Nonlinear Data Assimilation*.
-
-```text
-- Lorenz63
-  - s = 10
-  - b = 8/3
-  - r = 28
-- Simulate
-  - scheme = implicit midpoint
-  - dt = 0.01
-  - N = 20000*12 + 200
-- Obs.
-  - r = 8.0
-  - H = [1, 0, 0]
-  - obs_per = 12
-  - spin_up = 200
-- Assimilate
-  - PF
-    - m = 10 ~ 80 by 10
-    - h = 0.0 ~ 0.4 by 0.04
-```
-
-### Example 3
-
-```text
-- Lorenz96
-  - J = 40
-  - F = 8
-- Simulate
-  - scheme = RK4
-  - dt = 0.01
-  - N = 360*20*2  # 2年分に相当
-- Obs.
-  - r = 1.0
-  - H = I_40
-  - obs_per = 5
-  - burn_in = N/2
-- Assimilate
-  - ETKF
-    - m = 10 ~ 80 by 10
-    - alpha = 1.0 ~ 1.1  # anomaly inflation
-  - LETKF
-    - m = 8 ~ 20 by 4
-    - alpha = 1.0 ~ 1.1 by 0.02  # anomaly inflation
-    - rho = 5 ~ 10 by 1
-```
