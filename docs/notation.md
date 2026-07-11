@@ -50,9 +50,9 @@ source or reproducing a derivation.
 | Innovation | $`y_{n}-H_{n}\bar{x}_{n}^{f}`$ | $`y_{n}-H{\overline{\widehat{v}}}_{n}`$ | $`{\boldsymbol{y}}_{n}-\boldsymbol{H}{\overline{\boldsymbol{x}}}_{n}^{f}`$ | Code variable: `dy`; do not typeset `dy` as a differential. |
 | Kalman gain | $`K_{n}=P_{n}^{f}H_{n}^{\top}(H_{n}P_{n}^{f}H_{n}^{\top}+R_{n})^{-1}`$ | $`K_{n}={\widehat{P}}_{n}H^{*}(H{\widehat{P}}_{n}H^{*}+R)^{-1}`$ | $`{\boldsymbol{K}}_{n}={\boldsymbol{C}}_{n}^{f}\boldsymbol{H}^{\top}(\boldsymbol{H}{\boldsymbol{C}}_{n}^{f}\boldsymbol{H}^{\top}+\boldsymbol{R})^{-1}`$ | The paper uses bold $`{\boldsymbol{K}}_{n}`$ and $`\top`$. |
 | Transform matrix | $`T`$ | $`T_{n}\in\mathbb{R}^{m\times m}`$ | $`{\boldsymbol{T}}_{n}=\left(\boldsymbol{I}_{m}+\frac{1}{m-1}({\boldsymbol{V}}_{n}^{f})^{\top}\boldsymbol{H}^{\top}\boldsymbol{R}^{-1}\boldsymbol{H}{\boldsymbol{V}}_{n}^{f}\right)^{-1/2}`$ | $`{\boldsymbol{T}}_{n}`$ is a matrix square root chosen symmetric positive definite in the paper. |
-| Inflation parameter | $`\alpha`$ | $`{\widehat{P}}_{n}^{\alpha}=\alpha^{2}{\widehat{P}}_{n}`$, $`d{\widehat{\boldsymbol{V}}}_{n}^{\alpha}=\alpha d{\widehat{\boldsymbol{V}}}_{n}`$ | $`\alpha>1`$ | The 2026 paper uses multiplicative covariance inflation in Algorithm 3. |
+| Inflation parameter | $`\alpha`$ | $`{\widehat{P}}_{n}^{\alpha}=\alpha^{2}{\widehat{P}}_{n}`$, $`d{\widehat{\boldsymbol{V}}}_{n}^{\alpha}=\alpha d{\widehat{\boldsymbol{V}}}_{n}`$ | $`\alpha\gt 1`$ | The 2026 paper uses multiplicative covariance inflation in Algorithm 3. |
 | Minimum ensemble size | not used as a package symbol | not part of the ETKF notation here | $`m^{*}=N_{+}+1`$ | Added because this is central to the 2026 paper's notation and conclusions. |
-| Error metric | RMSE in examples | problem-dependent | $`\mathrm{SE}_{n}=\|{\boldsymbol{x}}_{n}-{\overline{\boldsymbol{x}}}_{n}^{a}\|^{2}`$, $`\mathrm{RMSE}_{n}`$ | Typeset metric names in roman capitals. |
+| Error metric | RMSE in examples | problem-dependent | $`\mathrm{SE}_{n}=\lVert{\boldsymbol{x}}_{n}-{\overline{\boldsymbol{x}}}_{n}^{a}\rVert^{2}`$, $`\mathrm{RMSE}_{n}`$ | Typeset metric names in roman capitals. |
 
 References checked:
 
@@ -78,10 +78,10 @@ References checked:
 
 All representative examples use the discrete-time state-space model
 
-$$
+```math
 x_{n} = M_{n}(x_{n-1}), \qquad
 y_{n} = H_{n} x_{n} + \varepsilon_{n}, \quad \varepsilon_{n} \sim N(0, R_{n}),
-$$
+```
 
 where $M_{n}$ advances the model over one assimilation window (numerical
 integration of the underlying ODE/PDE with the fourth-order Runge-Kutta
@@ -92,29 +92,29 @@ scheme, `da.scheme.rk4`).
 **Lorenz-63** ($N_{x} = 3$, chaotic for the standard parameters
 $\sigma = 10$, $r = 28$, $b = 8/3$):
 
-$$
+```math
 \dot{x} = \sigma (y - x), \qquad
 \dot{y} = x (r - z) - y, \qquad
 \dot{z} = x y - b z.
-$$
+```
 
 **Lorenz-96** ($N_{x} = J$ variables on a ring, forcing $F$; chaotic for
 $J = 40$, $F = 8$):
 
-$$
+```math
 \dot{x}_{j} = (x_{j+1} - x_{j-2})\, x_{j-1} - x_{j} + F,
 \qquad j = 1, \dots, J \ (\text{indices mod } J).
-$$
+```
 
 **2D Navier-Stokes (vorticity form on the torus)** with viscosity $\nu$ and
 stationary (Kolmogorov-type) forcing $f$ (the representative example uses no
 linear drag):
 
-$$
+```math
 \partial_{t} \omega + (u \cdot \nabla)\, \omega
 = \nu \Delta \omega + f,
 \qquad u = \nabla^{\perp} \Delta^{-1} \omega ,
-$$
+```
 
 solved pseudo-spectrally; the DA state is the packed `rfft2` vorticity
 spectrum (`NSE2DTorus.to_spectral_state`).
@@ -123,17 +123,17 @@ spectrum (`NSE2DTorus.to_spectral_state`).
 
 **3DVar** uses a fixed background covariance $B$ and gain
 
-$$
+```math
 K = B H^{\top} (H B H^{\top} + R)^{-1}, \qquad
 x_{n}^{a} = x_{n}^{f} + K (y_{n} - H x_{n}^{f}).
-$$
+```
 
 **ExKF** propagates the covariance through the linearized forecast map,
 
-$$
+```math
 P_{n}^{f} = F_{n} P_{n-1}^{a} F_{n}^{\top} + Q_{n}, \qquad
 K_{n} = P_{n}^{f} H^{\top} (H P_{n}^{f} H^{\top} + R)^{-1},
-$$
+```
 
 with $x_{n}^{a} = x_{n}^{f} + K_{n} (y_{n} - H x_{n}^{f})$ and
 $P_{n}^{a} = (I - K_{n} H) P_{n}^{f}$.
@@ -144,15 +144,15 @@ in the $`m`$-dimensional ensemble space. In the compact equations below,
 $`A^{f}`$ denotes the transposed anomaly matrix used by the transform step,
 $`A^{f}\in\mathbb{R}^{N_{x}\times m}`$:
 
-$$
+```math
 \tilde{P} = \left[(m-1) I + (H A^{f})^{\top} R^{-1} (H A^{f})\right]^{-1},
-$$
+```
 
-$$
+```math
 \bar{x}^{a} = \bar{x}^{f} + A^{f} \tilde{P} (H A^{f})^{\top} R^{-1}
 (y - H \bar{x}^{f}), \qquad
 A^{a} = A^{f} \big[(m-1) \tilde{P}\big]^{1/2}.
-$$
+```
 
 Multiplicative inflation is applied to the anomalies, $A \to \alpha A$, so
 the covariance is inflated by $\alpha^{2}$.
@@ -166,10 +166,10 @@ between component $j$ and each observation location.
 **Particle filter (bootstrap)** propagates $m$ particles through the model,
 updates weights with the Gaussian likelihood
 
-$$
+```math
 w_{n}^{(i)} \propto w_{n-1}^{(i)}
-\exp\!\Big(-\tfrac{1}{2}\,\|y_{n} - H x_{n}^{(i)}\|_{R^{-1}}^{2}\Big),
-$$
+\exp\!\Big(-\tfrac{1}{2}\,\lVert y_{n} - H x_{n}^{(i)}\rVert_{R^{-1}}^{2}\Big),
+```
 
 and resamples (multinomial / systematic / residual) when the effective
 sample size $N_{\mathrm{eff}} = 1 / \sum_{i} (w^{(i)})^{2}$ falls below a
