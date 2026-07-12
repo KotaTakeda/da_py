@@ -82,6 +82,26 @@ class ETKFN2011(ETKF):
             method="trust-exact",
             options=self.optimizer_options,
         )
+        optimizer_method = "trust-exact"
+        if not result.success:
+            fallback_options = {
+                key: value
+                for key, value in self.optimizer_options.items()
+                if key in {"gtol", "maxiter"}
+            }
+            result = minimize(
+                lambda u: terms_reduced(u)[0],
+                np.asarray(result.x, dtype=float),
+                jac=lambda u: terms_reduced(u)[1],
+                method="BFGS",
+                options=fallback_options,
+            )
+            optimizer_method = "BFGS"
+        if not result.success:
+            raise RuntimeError(
+                "ETKFN2011 analysis optimization failed before convergence: "
+                f"{result.message}"
+            )
         u = np.asarray(result.x, dtype=float)
         w = Qg @ u
         objective, gradient, hessian = _objective_gradient_hessian(
@@ -116,6 +136,7 @@ class ETKFN2011(ETKF):
                     "n_iter": int(result.nit),
                     "converged": bool(result.success),
                     "message": str(result.message),
+                    "optimizer_method": optimizer_method,
                     "weights": w.copy(),
                     "gauge_residual": float(np.sum(w)),
                     "hessian_eigenvalues": eigenvalues.copy(),

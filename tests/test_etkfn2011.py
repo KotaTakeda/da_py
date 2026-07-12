@@ -70,6 +70,25 @@ def test_rejects_fixed_inflation_and_nonlinear_observation():
         ETKFN2011(lambda x, dt: x, lambda x: x, R)
 
 
+def test_failed_optimization_does_not_update_ensemble():
+    rng = np.random.default_rng(9)
+    X0 = rng.normal(size=(6, 3))
+    filt = ETKFN2011(
+        lambda x, dt: x,
+        np.eye(3),
+        np.eye(3),
+        optimizer_options={"maxiter": 0},
+    )
+    filt.initialize(X0)
+
+    with np.testing.assert_raises_regex(RuntimeError, "failed before convergence"):
+        filt.update(np.array([1.0, -0.5, 0.25]))
+
+    np.testing.assert_array_equal(filt.X, X0)
+    assert filt.x == []
+    assert filt.analysis_diagnostics == []
+
+
 def test_large_ensemble_limit_approaches_etkf():
     rng = np.random.default_rng(12)
     X0 = rng.normal(size=(200, 3))
