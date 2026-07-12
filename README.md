@@ -42,6 +42,7 @@ pip install -e ".[dev]"
 ```py
 from da.etkf import ETKF
 from da.enkfn import EnKFN
+from da.etkfn2011 import ETKFN2011
 from da.exkf import ExKF
 from da.pf import ParticleFilter
 from da.l63 import lorenz63

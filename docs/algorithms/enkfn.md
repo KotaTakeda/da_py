@@ -1,11 +1,11 @@
 # EnKF-N: derivation and implementation map
 
-This page documents the implementation in `src/da/enkfn.py`.  The class
-`EnKFN` is the **dual, Gaussian-scale-mixture EnKF-N** of Raanes, Bocquet,
-and Carrassi (2019), with the practical hyperprior corrections used by
-DAPPER.  It is not the direct non-quadratic ETKF-N analysis of Bocquet
-(2011, Sect. 3).  The two methods share the finite-ensemble prior, but make
-different Gaussian approximations to the posterior.
+This page documents both finite-size filters.  `EnKFN` in `src/da/enkfn.py`
+is the **dual, Gaussian-scale-mixture EnKF-N** of Raanes, Bocquet, and
+Carrassi (2019), with the practical hyperprior corrections used by DAPPER.
+`ETKFN2011` in `src/da/etkfn2011.py` is the direct non-quadratic ETKF-N
+analysis of Bocquet (2011, Sect. 3).  The methods share the finite-ensemble
+prior, but use different posterior approximations.
 
 ## 1. Forecast ensemble and ETKF conventions
 
@@ -208,6 +208,36 @@ Diagnostics contain `l1`, `lambda_cov`, `zeta`, `objective`, `gradient`,
    `l1`, so the optimizer is unchanged.
 4. The registry remains the operational source for examples; no metadata
    field is needed for this explanatory page.
+
+## 8. Original ETKF-N (`ETKFN2011`)
+
+For \(x=\bar x^f+Aw\), `ETKFN2011` minimizes Bocquet (2011), Eq. (35),
+
+\[
+ J_a(w)=\frac12\lVert\delta-Yw\rVert_{R^{-1}}^2
+ +\frac m2\log(1+m^{-1}+w^Tw),
+\]
+
+from \(w=0\).  Its analytic gradient and Hessian are Eqs. (37)--(39):
+
+\[
+ \nabla J_a=-Y^TR^{-1}(\delta-Yw)+\frac{m}{c}w,
+\qquad
+ \nabla^2J_a=Y^TR^{-1}Y+rac{m}{c^2}(cI-2ww^T),
+\quad c=1+m^{-1}+w^Tw.
+\]
+
+Optimization is performed in an orthonormal basis of
+\(\{w:\mathbf1^Tw=0\}\), which fixes the redundant ensemble gauge exactly.
+At the optimum, the analysis transform is constructed from the positive
+definite reduced Hessian as prescribed by Eqs. (40)--(42); it does not call
+`ETKF._transform_T`.  The class inherits only forecast and storage
+infrastructure from `ETKF`, requires a linear observation matrix, and rejects
+additional fixed inflation.  `analysis_diagnostics` records the objective,
+reduced gradient norm, iterations, convergence, optimizer message, weights,
+gauge residual, and reduced-Hessian eigenvalues.
+The diagnostics also include the state-space `analysis_covariance`, which is
+the inverse-Hessian covariance represented by the returned ensemble.
 
 ## References
 
