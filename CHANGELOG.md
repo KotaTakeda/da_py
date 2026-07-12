@@ -28,7 +28,7 @@ metadata.
   (`examples/scripts/l96_enkfn_tuning.py`) that selects `alpha_*` and writes a
   CSV summary plus an inflation-sweep figure, the paired benchmark script
   (`examples/scripts/l96_enkfn.py`), and a tutorial notebook. Registered in
-  `examples/example_registry.json` and documented in `docs/examples.md`.
+  `examples/example_registry.json` and documented in `docs/guides/examples.md`.
 - `da.l96.two_thirds_observation`, a reusable constructor for the periodic 2/3
   Lorenz-96 partial-observation operator.
 - Additive Gaussian model noise (additive stochastic inflation) for the
@@ -38,8 +38,8 @@ metadata.
   timing as `ExKF`'s `Q`. Supports dense positive-semidefinite (including
   rank-deficient) and diagonal covariances, validated with informative
   errors; `rng` must be an explicit `numpy.random.Generator`. The sampling
-  engine lives in `da.noise`. Documented in `docs/model_noise.md` together
-  with the project RNG policy (`docs/rng_policy.md`).
+  engine lives in `da.noise`. Documented in `docs/algorithms/model_noise.md` together
+  with the project RNG policy (`docs/reference/rng_policy.md`).
 
 ## 0.7.0 - 2026-07-06
 

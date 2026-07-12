@@ -53,7 +53,7 @@ class ETKF:
           Dense symmetric PSD (Nx, Nx) — rank-deficient allowed — or a 1-D
           vector of per-component variances. Defaults to None (deterministic).
         - rng: numpy.random.Generator driving the model noise; required when
-          Q is given (see docs/rng_policy.md).
+          Q is given (see docs/reference/rng_policy.md).
         """
         self.M = M
         self.H = H

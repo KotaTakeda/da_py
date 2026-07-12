@@ -7,7 +7,7 @@
       "filter": "3DVar / ExKF",
       "script": "examples/scripts/l63_3dvar_exkf.py",
       "notebook": "examples/notebooks/l63_3dvar_exkf.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative",
       "parameters": {
         "state_dim": 3,
@@ -22,7 +22,7 @@
       "filter": "Particle Filter",
       "script": "examples/scripts/l63_pf.py",
       "notebook": "examples/notebooks/l63_pf.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative",
       "parameters": {
         "state_dim": 3,
@@ -37,7 +37,7 @@
       "filter": "ETKF",
       "script": "examples/scripts/l63_etkf.py",
       "notebook": "examples/notebooks/l63_etkf.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative",
       "parameters": {
         "state_dim": 3,
@@ -52,7 +52,7 @@
       "filter": "ETPF",
       "script": "examples/scripts/l63_etpf.py",
       "notebook": "examples/notebooks/l63_etpf.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative_optional",
       "parameters": {
         "state_dim": 3,
@@ -67,7 +67,7 @@
       "filter": "ETKF",
       "script": "examples/scripts/l96_etkf.py",
       "notebook": "examples/notebooks/l96_etkf.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative",
       "parameters": {
         "state_dim": 40,
@@ -82,7 +82,7 @@
       "filter": "LETKF",
       "script": "examples/scripts/l96_letkf.py",
       "notebook": "examples/notebooks/l96_letkf.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative",
       "parameters": {
         "state_dim": 40,
@@ -97,7 +97,7 @@
       "filter": "EnKF-N / tuned ETKF",
       "script": "examples/scripts/l96_enkfn.py",
       "notebook": "examples/notebooks/l96_enkfn.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative",
       "parameters": {
         "state_dim": 60,
@@ -115,7 +115,7 @@
       "filter": "ETKF",
       "script": "examples/scripts/nse2d_etkf.py",
       "notebook": "examples/notebooks/nse2d_etkf.ipynb",
-      "docs": "docs/examples.md",
+      "docs": "docs/guides/examples.md",
       "status": "representative",
       "parameters": {
         "grid": "32x32",

@@ -16,7 +16,7 @@ This is additive *stochastic* inflation (Gaussian model noise). It is distinct
 from the multiplicative anomaly inflation ``alpha`` of the ensemble filters
 (``A -> alpha A``), from the deterministic additive covariance regularization
 of ``PO`` (``Pf -> Pf + alpha I``), and from the observation perturbations
-drawn by stochastic EnKF variants; see ``docs/model_noise.md``.
+drawn by stochastic EnKF variants; see ``docs/algorithms/model_noise.md``.
 """
 
 import numpy as np
