@@ -74,5 +74,5 @@ forecast diagnostics then describe the unperturbed propagation.
 
 The filters take an explicit `numpy.random.Generator` via the `rng`
 constructor argument whenever `Q` is given, following the project RNG policy
-(`docs/rng_policy.md`). A fixed seed makes the full filtering run
+([RNG policy](../reference/rng_policy.md)). A fixed seed makes the full filtering run
 reproducible.

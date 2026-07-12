@@ -1,20 +1,36 @@
-# da_py docs
+# da_py documentation
 
-This directory contains compact operational documentation for the representative
-examples.
+The documentation is organized by purpose. Start with the example guide for a
+runnable introduction, then use the algorithm and reference pages for precise
+mathematical and API conventions.
 
-- `notation.md`: common mathematical notation used in docs and notebooks.
-- `examples.md`: representative model/filter settings, synchronized with
-  `examples/example_registry.json`.
-- `model_noise.md`: additive Gaussian model noise (the ensemble filters'
-  `Q` argument) and how it differs from the inflation mechanisms.
-- `rng_policy.md`: the project-wide random-number policy.
-- `roadmap.md`: examples intentionally left outside v1.
+## Guides
 
-The source of truth for representative example metadata is
-`examples/example_registry.json`. When adding or renaming an example, update the
-registry, the matching script/notebook, and `docs/examples.md` in the same PR.
+- [Representative examples](guides/examples.md): supported scripts,
+  notebooks, benchmark settings, and execution instructions.
 
-Contributor/maintenance specifications for authoring the representative
-notebooks live under `docs/contributing/` and are not part of the user-facing
-documentation.
+## Algorithms
+
+- [EnKF-N derivation and implementation map](algorithms/enkfn.md): finite-size
+  hierarchy, scalar dual optimization, and mapping to `da.enkfn` and ETKF.
+- [Gaussian model noise](algorithms/model_noise.md): the ensemble filters' `Q`
+  argument and its distinction from covariance inflation.
+
+## Reference
+
+- [Notation](reference/notation.md): shared mathematical notation and storage
+  conventions used by the documentation and notebooks.
+- [RNG policy](reference/rng_policy.md): reproducibility and random-number
+  ownership across the package.
+
+## Contributing
+
+- [Notebook specification](contributing/notebook_spec.md): requirements for
+  representative tutorial notebooks.
+- [Examples roadmap](contributing/examples_roadmap.md): examples intentionally
+  deferred beyond the current representative set.
+
+The source of truth for representative-example metadata is
+`examples/example_registry.json`. When adding or renaming an example, update
+the registry, the matching script or notebook, and
+[`guides/examples.md`](guides/examples.md) in the same change.

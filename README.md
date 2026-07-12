@@ -59,8 +59,8 @@ from da.scheme import rk4
 
 代表例メタデータの運用上の正本は
 [`examples/example_registry.json`](examples/example_registry.json)です。共通記号は
-[`docs/notation.md`](docs/notation.md)、設定と実行方法は
-[`docs/examples.md`](docs/examples.md)を参照してください。
+[`docs/reference/notation.md`](docs/reference/notation.md)、設定と実行方法は
+[`docs/guides/examples.md`](docs/guides/examples.md)を参照してください。
 
 | Model | Filter | Script | Notebook |
 | --- | --- | --- | --- |
@@ -93,6 +93,10 @@ Pf -> alpha^2 * Pf
 ```
 
 This convention applies to `ETKF`, `LETKF`, and the non-additive `PO` update. In `PO(additive_inflation=True)`, `alpha` remains an additive covariance inflation amplitude.
+
+The adaptive EnKF-N convention, finite-ensemble derivation, and exact mapping
+from its scalar dual objective to the ETKF transform are documented in
+[`docs/algorithms/enkfn.md`](docs/algorithms/enkfn.md).
 
 
 ## Visualization

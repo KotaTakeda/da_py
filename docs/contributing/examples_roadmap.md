@@ -13,7 +13,7 @@ Planned candidates:
 - GitHub Pages rendering of notebook tutorials.
 
 Benchmark/tutorial extensions beyond the v1 representative notebooks
-(`docs/contributing/notebook_spec.md`):
+([notebook specification](notebook_spec.md)):
 
 - Diagnostics beyond RMSE: ensemble spread and spread-skill ratio, rank
   histograms, observation-space innovations, and error splits between

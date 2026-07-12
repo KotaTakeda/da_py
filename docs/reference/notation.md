@@ -90,7 +90,7 @@ integration of the underlying ODE/PDE with the fourth-order Runge-Kutta
 scheme, `da.scheme.rk4`).
 
 With additive Gaussian model noise (the `Q` argument of the ensemble
-filters, see `docs/model_noise.md`) each integration step of the forecast
+filters, see [Gaussian model noise](../algorithms/model_noise.md)) each integration step of the forecast
 becomes stochastic, $x \leftarrow M(x, \delta t) + \eta$ with
 $\eta \sim N(0, Q)$ drawn independently for each ensemble member at every
 `forecast(dt)` step — the same per-step timing as `ExKF`'s $Q$; the
@@ -166,6 +166,11 @@ A^{a} = A^{f} \big[(m-1) \tilde{P}\big]^{1/2}.
 Multiplicative inflation is applied to the anomalies, $A \to \alpha A$, so
 the covariance is inflated by $\alpha^{2}$.
 
+For `EnKFN`, $l_1$ is the adaptively estimated anomaly factor,
+$\lambda_{\mathrm{cov}}=l_1^2$ is its covariance factor, and
+$\zeta=(m-1)/l_1^2$ is the corresponding ensemble-space prior precision.
+See [the EnKF-N derivation](../algorithms/enkfn.md) for the detailed normalization.
+
 **LETKF** performs the ETKF update independently for each state component
 $j$, using observation-error covariance localized by the Gaspari-Cohn
 function $\rho$ with radius $c$:
@@ -192,7 +197,7 @@ ensemble with minimal squared-Euclidean cost (solved with the POT package).
 
 ## RMSE convention
 
-See `docs/contributing/notebook_spec.md`. Analysis RMSE is
+See [the notebook specification](../contributing/notebook_spec.md). Analysis RMSE is
 $`\mathrm{RMSE}_{n}=\sqrt{\frac{1}{N_{x}}\sum_{i}(\hat{x}_{n,i}^{a}-x_{n,i})^{2}}`$,
 where $`\hat{x}_{n}^{a}`$ is the analysis (ensemble-mean) estimate. It is
 compared against the observation-noise scale

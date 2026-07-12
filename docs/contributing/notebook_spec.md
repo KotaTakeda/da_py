@@ -28,7 +28,7 @@ Every representative notebook uses exactly this section structure:
   discrete forecast map $x_{n} = M_{n}(x_{n-1})$, the observation model
   $y_{n} = H_{n} x_{n} + \varepsilon_{n}$, $\varepsilon_{n} \sim N(0, R_{n})$, and the
   analysis update of the specific filter, using the symbols of
-  `docs/notation.md`. A reader should understand the benchmark without
+  [`docs/reference/notation.md`](../reference/notation.md). A reader should understand the benchmark without
   opening other files.
 - **Concrete parameters**: all default values (time step, observation
   interval, observation noise, ensemble/particle size, inflation,
