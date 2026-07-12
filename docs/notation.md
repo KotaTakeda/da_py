@@ -166,6 +166,11 @@ A^{a} = A^{f} \big[(m-1) \tilde{P}\big]^{1/2}.
 Multiplicative inflation is applied to the anomalies, $A \to \alpha A$, so
 the covariance is inflated by $\alpha^{2}$.
 
+For `EnKFN`, $l_1$ is the adaptively estimated anomaly factor,
+$\lambda_{\mathrm{cov}}=l_1^2$ is its covariance factor, and
+$\zeta=(m-1)/l_1^2$ is the corresponding ensemble-space prior precision.
+See [the EnKF-N derivation](enkfn.md) for the detailed normalization.
+
 **LETKF** performs the ETKF update independently for each state component
 $j$, using observation-error covariance localized by the Gaspari-Cohn
 function $\rho$ with radius $c$:

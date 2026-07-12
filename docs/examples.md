@@ -40,6 +40,9 @@ figure under `examples/output/` (git-ignored, produced on demand), and the
 benchmark script prints its diagnostics and writes optional figures only when
 `--series-csv` / `--figure-output` are given.
 
+See [EnKF-N: derivation and implementation map](enkfn.md) for the finite-size
+hierarchy, dual objective, inflation convention, and source-code mapping.
+
 ```sh
 python examples/scripts/l96_enkfn_tuning.py   # sweep alpha, pick alpha_*, write CSV + figure
 python examples/scripts/l96_enkfn.py          # benchmark tuned ETKF vs EnKF-N

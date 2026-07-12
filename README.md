@@ -94,6 +94,10 @@ Pf -> alpha^2 * Pf
 
 This convention applies to `ETKF`, `LETKF`, and the non-additive `PO` update. In `PO(additive_inflation=True)`, `alpha` remains an additive covariance inflation amplitude.
 
+The adaptive EnKF-N convention, finite-ensemble derivation, and exact mapping
+from its scalar dual objective to the ETKF transform are documented in
+[`docs/enkfn.md`](docs/enkfn.md).
+
 
 ## Visualization
 
