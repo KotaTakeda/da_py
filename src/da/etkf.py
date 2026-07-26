@@ -3,6 +3,9 @@ from numpy.linalg import inv
 
 from da.noise import GaussianModelNoise
 
+_PROJECTION_RTOL = 1.0e-8
+_PROJECTION_ATOL = 1.0e-10
+
 # ==========================================
 # EnsembleTransformKalmanFilter(ETKF)
 # Refs.
@@ -39,6 +42,7 @@ class ETKF:
         store_ensemble=False,
         Q=None,
         rng=None,
+        covariance_projection=None,
     ):
         """
         Args:
@@ -54,12 +58,28 @@ class ETKF:
           vector of per-component variances. Defaults to None (deterministic).
         - rng: numpy.random.Generator driving the model noise; required when
           Q is given (see docs/reference/rng_policy.md).
+        - covariance_projection: optional orthogonal projection P with shape
+          (Nx, Nx). During analysis, forecast anomalies are replaced by
+          P @ A_f, so the analysis increment and anomalies lie in range(P).
+          The forecast mean and forecast ensemble remain unchanged. This
+          option is supported only for a linear matrix observation operator H.
         """
         self.M = M
         self.H = H
         self.linear_obs = isinstance(H, np.ndarray)
+        if covariance_projection is not None and not self.linear_obs:
+            raise NotImplementedError(
+                "covariance_projection requires a linear matrix observation "
+                "operator H; callable observation operators are not supported"
+            )
         if not self.linear_obs:
             self.H = _batch_observation(H)
+
+        self.covariance_projection = (
+            None
+            if covariance_projection is None
+            else np.asarray(covariance_projection, dtype=float)
+        )
 
         self.R = R
         self.Rinv = inv(self.R)
@@ -89,6 +109,8 @@ class ETKF:
         m, Nx = X_0.shape  # ensemble shape
         self.Nx = Nx
         self.m = m
+        if self.covariance_projection is not None:
+            self._validate_covariance_projection()
         if self._model_noise is not None and self._model_noise.Nx != Nx:
             raise ValueError(
                 f"Q is for state dimension {self._model_noise.Nx}, "
@@ -136,8 +158,12 @@ class ETKF:
 
         # transformの準備
         dXf = Xf - xf[:, None]  # (Nx, m)
-        Yf = self._apply_H(Xf)
-        dYf = Yf - Yf.mean(axis=1, keepdims=True)
+        if self.covariance_projection is None:
+            Yf = self._apply_H(Xf)
+            dYf = Yf - Yf.mean(axis=1, keepdims=True)
+        else:
+            dXf = self.covariance_projection @ dXf
+            dYf = self._apply_H(dXf)
         dy = y_obs - self._apply_H(xf)
 
         # transform
@@ -193,3 +219,34 @@ class ETKF:
             return self.H @ X  # (Ny, m)
         else:
             return self.H(X.T).T  # (Ny, m)
+
+    def _validate_covariance_projection(self):
+        """Validate the analysis covariance projection after Nx is known."""
+        P = self.covariance_projection
+        expected_shape = (self.Nx, self.Nx)
+        if P.shape != expected_shape:
+            raise ValueError(
+                "covariance_projection must have shape "
+                f"{expected_shape}, got {P.shape}"
+            )
+        if not np.all(np.isfinite(P)):
+            raise ValueError("covariance_projection must contain only finite values")
+        if not np.allclose(
+            P, P.T, rtol=_PROJECTION_RTOL, atol=_PROJECTION_ATOL
+        ):
+            raise ValueError("covariance_projection must be symmetric")
+        if not np.allclose(
+            P @ P, P, rtol=_PROJECTION_RTOL, atol=_PROJECTION_ATOL
+        ):
+            raise ValueError(
+                "covariance_projection must be idempotent (P @ P == P)"
+            )
+        if not np.allclose(
+            self.H @ P,
+            self.H,
+            rtol=_PROJECTION_RTOL,
+            atol=_PROJECTION_ATOL,
+        ):
+            raise ValueError(
+                "covariance_projection is incompatible with H (H @ P must equal H)"
+            )
