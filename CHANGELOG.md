@@ -40,6 +40,9 @@ metadata.
   errors; `rng` must be an explicit `numpy.random.Generator`. The sampling
   engine lives in `da.noise`. Documented in `docs/algorithms/model_noise.md` together
   with the project RNG policy (`docs/reference/rng_policy.md`).
+- Optional ETKF covariance projection onto the observable state subspace
+  `range(H.T)`, derived internally from a linear observation matrix `H`.
+  The default ETKF analysis remains unchanged.
 
 ## 0.7.0 - 2026-07-06
 
