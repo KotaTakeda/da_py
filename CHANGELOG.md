@@ -18,6 +18,32 @@ The source of truth for the package version is `project.version` in
 `pyproject.toml`. At runtime, `da.__version__` is read from the installed package
 metadata.
 
+## Unreleased
+
+### Added
+
+- Representative `l96_enkfn` example: a Lorenz-96 (`Nx = 60`, periodic
+  2/3-observed) benchmark comparing a fixed-inflation ETKF against EnKF-N.
+  Includes a multi-seed ETKF inflation-tuning script
+  (`examples/scripts/l96_enkfn_tuning.py`) that selects `alpha_*` and writes a
+  CSV summary plus an inflation-sweep figure, the paired benchmark script
+  (`examples/scripts/l96_enkfn.py`), and a tutorial notebook. Registered in
+  `examples/example_registry.json` and documented in `docs/guides/examples.md`.
+- `da.l96.two_thirds_observation`, a reusable constructor for the periodic 2/3
+  Lorenz-96 partial-observation operator.
+- Additive Gaussian model noise (additive stochastic inflation) for the
+  ensemble filters: `ETKF`, `EnKFN`, and `LETKF` accept `Q` and `rng`
+  constructor arguments and apply `x <- M(x, dt) + eta`, `eta ~ N(0, Q)`,
+  independently per member at every `forecast(dt)` step — the same per-step
+  timing as `ExKF`'s `Q`. Supports dense positive-semidefinite (including
+  rank-deficient) and diagonal covariances, validated with informative
+  errors; `rng` must be an explicit `numpy.random.Generator`. The sampling
+  engine lives in `da.noise`. Documented in `docs/algorithms/model_noise.md` together
+  with the project RNG policy (`docs/reference/rng_policy.md`).
+- Optional ETKF covariance projection onto the observable state subspace
+  `range(H.T)`, derived internally from a linear observation matrix `H`.
+  The default ETKF analysis remains unchanged.
+
 ## 0.7.0 - 2026-07-06
 
 ### Added

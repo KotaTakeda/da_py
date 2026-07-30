@@ -47,6 +47,11 @@ def truth_and_observations(step, x0, H, R, args, *, spinup_steps=500):
     return np.asarray(truth), np.asarray(obs), rng
 
 
+def post_spinup_mean(rmses, spinup):
+    """Mean of an RMSE series after discarding the first ``spinup`` cycles."""
+    return float(np.mean(np.asarray(rmses)[spinup:]))
+
+
 def ensemble_around(rng, center, size, spread):
     return np.asarray(center) + spread * rng.standard_normal((size, len(center)))
 
