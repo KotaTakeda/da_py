@@ -60,89 +60,203 @@ contrast, the present code selects one Gaussian component by a scalar dual
 optimization and then applies a standard ETKF transform.  This distinction
 is why a separate original ETKF-N implementation can coexist with `EnKFN`.
 
-## 3. State coordinate, dual precision, and scalar objective
+## 3. Paper equations and implementation transformations
 
-Write $x=\bar x^f+Aw$.  Here $w\in\mathbb R^m$ is a state coordinate;
-$\zeta>0$ is an auxiliary precision, not a state coordinate.  Raanes et
-al. obtain
+### 3.1 Original equations: Raanes et al. (2019)
 
-$$
- \mathcal J(\zeta,w)=\varepsilon_m\zeta-(m+g)\log\zeta
- +\zeta\lVert w\rVert^2+\lVert\delta-Yw\rVert_{R^{-1}}^2,
- \tag{39}
-$$
-
-and the stationary relation
+The equations below retain the paper's symbols and numbering. The source
+checked here is [the author manuscript, arXiv:1801.08474v4,
+Sects. 3.6--3.7](https://arxiv.org/pdf/1801.08474v4#page=8).
+The paper writes $\lVert v\rVert_C^2=v^TC^{-1}v$; this page uses an explicit
+inverse in quadratic forms to avoid confusing covariance and precision.
+Here $N$ is the ensemble size, $X$ the anomaly matrix,
+$\bar\delta=y-H\bar x$, $Y=HX$, and $\varepsilon_N=1+1/N$.
 
 $$
- \zeta(w)={m+g\over\varepsilon_m+\lVert w\rVert^2}.
- \tag{38c}
-$$
-
-For fixed $\zeta$, the quadratic problem has
-
-$$
- P_w(\zeta)=(\zeta I+Y^TR^{-1}Y)^{-1},\qquad
- \bar w_a(\zeta)=P_w(\zeta)Y^TR^{-1}\delta,
- \tag{41}
-$$
-
-and substitution gives the one-dimensional dual $D(\zeta)$ in their
-Eq. (42).  A stationary dual solution and $\bar w_a(\zeta)$ form a
-stationary point of the effective posterior (Sect. 3.6).  Their Gaussian
-posterior approximation is Eqs. (46)--(47), with squared prior inflation
-$\alpha_*=(m-1)/\zeta_*$ (Eq. (48)).
-
-The code whitens with the Cholesky factor $R=LL^T$, forms
-
-$$
- Z=(L^{-1}Y)^T\in\mathbb R^{m\times N_y},\quad
- Z=U\,\mathrm{diag}(s_i)V^T,\quad
- d_u=V^TL^{-1}\delta,
-$$
-
-and uses $l_1^2=(m-1)/\zeta$.  Woodbury reduction of Eq. (42), removal
-of terms independent of $l_1$, and the DAPPER normalization yield
-
-$$
- J(l_1)=\sum_{i=1}^{r}{d_{u,i}^2\over (l_1s_i)^2+m-1}
-       +{e_N\over l_1^2}+c_L\log(l_1^2),\qquad l_1>0. \tag{1}
-$$
-
-Only the SVD rank $r\le\min(m,N_y)$ contributes to the first term;
-innovation components orthogonal to `V` contribute only an omitted constant.
-`_hyperprior_coeffs` initially sets
-$e_N=(m+1)/m$ and $c_L=(m+g)/(m-1)$, then applies DAPPER's
-`xN` scaling and its mode correction based on
-$i_{KH}=\frac{m-1}{m}\sum_{j=1}^{m}(s_j^2+m-1)^{-1}$, with $s_j=0$
-for indices beyond the computed SVD rank (zero padding).  Consequently, (1)
-is the DAPPER practical dual objective:
-with the corrections disabled it is a normalized/reparameterized form of
-Raanes et al. Eq. (42), but with the default correction it is not
-algebraically identical to the uncorrected paper objective.
-
-## 4. Derivatives and solver policy
-
-With $q_i=(l_1s_i)^2+m-1$, the source implements term by term
-
-$$
- J'(l_1)=-2l_1\sum_i{s_i^2d_{u,i}^2\over q_i^2}
-          -{2e_N\over l_1^3}+{2c_L\over l_1},
+ x=\bar x+Xw,\qquad
+ \zeta(w)=\frac{N+g}{\varepsilon_N+\lVert w\rVert^2}.
+ \tag{29, 38c}
 $$
 
 $$
- J''(l_1)=8l_1^2\sum_i{s_i^4d_{u,i}^2\over q_i^3}
-          +{6e_N\over l_1^4}-{2c_L\over l_1^2}.
+ \mathcal J(\zeta,w)=\varepsilon_N\zeta-(N+g)\log\zeta
+ +\zeta\lVert w\rVert^2
+ +(\bar\delta-Yw)^TR^{-1}(\bar\delta-Yw).
+ \tag{39b}
 $$
 
-The requested default is Newton's method from `initial_l1=1`.  Failure,
-non-finite output, or a non-positive root triggers a bracketed Brent root of
-$J'$; failure to bracket triggers bounded minimization on
-$[10^{-8},10^8]$.  A requested Brent solve has the same bounded fallback.
-The result is positive and finite after the final check, but the objective is
-not asserted convex: `converged` reports only the numerical solver's status,
-not uniqueness or global optimality.  `method` records the solver actually
-used and `requested_method` records the request.
+$$
+ \bar P_w^a(\zeta)=(\zeta I_N+Y^TR^{-1}Y)^{-1},\qquad
+ \bar w^a(\zeta)=\bar P_w^a(\zeta)Y^TR^{-1}\bar\delta.
+ \tag{41a,b}
+$$
+
+Substituting $w=\bar w^a(\zeta)$ gives the original dual objective:
+
+$$
+ D(\zeta)=\varepsilon_N\zeta-(N+g)\log\zeta
+ +\bar\delta^T\left(R+\frac{YY^T}{\zeta}\right)^{-1}\bar\delta,
+ \qquad \zeta>0.
+ \tag{42}
+$$
+
+The paper uses the scaled SVD and covariance inflation
+
+$$
+ U\,\operatorname{diag}(\bar\sigma_i)V^T
+       =[(N-1)R]^{-1/2}Y,\qquad
+ \alpha_*=(N-1)/\zeta_*.
+ \tag{45, 48}
+$$
+
+In Sect. 3.5, $g$ is the nullity of $X$ (typically 1 under the paper's
+assumptions). The implementation instead exposes `g` as a parameter with
+default 0. Algebraic comparisons below hold for the **same chosen $g$**;
+the default is not an automatic implementation of the paper's nullity rule.
+
+### 3.2 Change of notation, whitening, and scalar normalization
+
+In this repository $N=m$, $X=A$, $\bar\delta=\delta$, and
+$n=m-1$. The implementation's `X` array is the ensemble, not the paper's
+anomaly matrix $X$. The optimization variable is changed by
+
+$$
+ \alpha=l_1^2=\lambda_{\rm cov},\qquad
+ \zeta=\frac{n}{l_1^2},\qquad l_1>0.
+$$
+
+With $R=LL^T$, the implementation computes
+
+$$
+ \widetilde Y=L^{-1}Y,\quad v=L^{-1}\delta,\quad
+ Z=\widetilde Y^T=U_c\operatorname{diag}(s_i)V_c^T,\quad d_u=V_c^Tv.
+$$
+
+These are the unscaled singular values: $s_i=\sqrt n\,\bar\sigma_i$.
+Cholesky whitening and symmetric whitening differ by an orthogonal factor;
+the SVD factors need not be identical to those in Eq. (45).
+Here $r=\min(m,N_y)$ is the number of retained thin-SVD coordinates
+(including any zero singular values), not necessarily the numerical rank.
+Let $v_\perp=(I-V_cV_c^T)v$. Direct diagonalization gives
+
+$$
+ \delta^T(R+YY^T/\zeta)^{-1}\delta
+ =\sum_{i=1}^{r}\frac{\zeta d_{u,i}^2}{\zeta+s_i^2}
+  +\lVert v_\perp\rVert^2
+ =n\sum_{i=1}^{r}\frac{d_{u,i}^2}{n+l_1^2s_i^2}
+  +\lVert v_\perp\rVert^2.
+$$
+
+Thus, before any practical hyperprior correction,
+
+$$
+ \frac{D(n/l_1^2)}{n}=J_0(l_1)+C,
+$$
+
+$$
+ J_0(l_1)=\sum_{i=1}^{r}\frac{d_{u,i}^2}{n+l_1^2s_i^2}
+ +\frac{\varepsilon_m}{l_1^2}
+ +\frac{m+g}{n}\log(l_1^2),\qquad
+ C=\frac{\lVert v_\perp\rVert^2-(m+g)\log n}{n}.
+$$
+
+The positive constant scaling $1/n$ and additive constant $C$ preserve
+minimizers. This is a reparameterization of an objective, not a change of
+probability-density coordinates; no Jacobian term is added.
+
+### 3.3 Practical coefficients used by the implementation
+
+The following formulas describe `_hyperprior_coeffs`, rather than an
+identity obtained solely by transforming Eq. (42):
+
+$$
+ e_0=\frac{m+1}{m},\quad c_0=\frac{m+g}{n},\quad
+ p_0=\frac{e_0}{c_0},\quad
+ i_{KH}=\frac{n}{m}\sum_{j=1}^{m}\frac{1}{s_j^2+n},\quad
+ h=\sqrt{p_0^{\,i_{KH}}},
+$$
+
+$$
+ e_N=\frac{e_0}{h}\,x_N,\qquad c_L=c_0h\,x_N.
+$$
+
+Singular values are padded with zeros to length $m$ in $i_{KH}$.
+`xN` is $x_N$, not an ensemble member. The corrected objective is
+
+$$
+ J(l_1)=\sum_{i=1}^{r}\frac{d_{u,i}^2}{n+l_1^2s_i^2}
+       +\frac{e_N}{l_1^2}+c_L\log(l_1^2),\qquad l_1>0. \tag{1}
+$$
+
+Only when $h=1$ and $x_N=1$ does this reduce to $J_0$ for the same $g$.
+Setting `xN=1` alone does **not** disable the mode correction; the current
+API has no switch to disable it. These practical coefficients follow the
+DAPPER formulation. They must be distinguished from the uncorrected paper
+objective and from the purely algebraic transformations in Sect. 3.2.
+
+## 4. Derivatives and Newton-only solver policy
+
+### 4.1 Derivatives in the implementation variable
+
+The following derivatives are derived here from (1); they are not quoted
+expanded derivatives from the paper. For $q_i=n+l_1^2s_i^2$,
+
+$$
+ J'(l_1)=-2l_1\sum_i\frac{s_i^2d_{u,i}^2}{q_i^2}
+          -\frac{2e_N}{l_1^3}+\frac{2c_L}{l_1},
+$$
+
+$$
+ J''(l_1)=-2\sum_i\frac{s_i^2d_{u,i}^2}{q_i^2}
+          +8l_1^2\sum_i\frac{s_i^4d_{u,i}^2}{q_i^3}
+          +\frac{6e_N}{l_1^4}-\frac{2c_L}{l_1^2}.
+$$
+
+The first term in $J''$ comes from differentiating the prefactor $-2l_1$
+in $J'$. It was missing from both the implementation and this page before
+[Issue #59](https://github.com/KotaTakeda/da_py/issues/59) was addressed.
+
+For the uncorrected objective, the chain rule also gives
+
+$$
+ J_0'(l_1)=-\frac{2}{l_1^3}D'(n/l_1^2),\qquad
+ J_0''(l_1)=\frac{4n}{l_1^6}D''(n/l_1^2)
+             +\frac{6}{l_1^4}D'(n/l_1^2).
+$$
+
+### 4.2 Paper prescription versus implementation policy
+
+Raanes et al., Sect. 3.7, specify Newton's method with initial
+$\zeta=N-1$, corresponding to $l_1=1$. They explicitly acknowledge
+multiple minima and dependence on the optimizer and initial guess.
+Newton iteration is not invariant under nonlinear reparameterization:
+even for $J_0$, iterating in $l_1$ need not follow the same path as in
+$\zeta$. The paper does not supply the expanded $l_1$ derivatives above
+or the SciPy stopping parameters used here.
+
+The implementation solves $J'(l_1)=0$ using
+
+$$
+ l_1^{(k+1)}=l_1^{(k)}-\frac{J'(l_1^{(k)})}{J''(l_1^{(k)})}.
+$$
+
+Only `method="newton"` is accepted. Defaults are `initial_l1=1`,
+`xtol=1e-8`, and `max_iter=100`. There is no Brent root solve, bounded
+minimization, or other fallback. A finite positive iterate is returned even
+if the solver reports nonconvergence; `converged=False` exposes that status.
+A non-finite or non-positive result raises `RuntimeError`. Solver/input
+exceptions propagate rather than triggering another method.
+
+The selected stationary point depends on the initial value. `converged`
+reports the solver's stopping status, not a proof of stationarity, positive
+curvature, uniqueness, or global optimality. No search over all stationary
+points is performed. For the Issue #59 example
+`dY=[[-7.1e-5, 7.1e-5]]`, `dy=[10]`, `R=[[1]]`, the default solve selects
+the local minimum near $l_1=1$ although a point near $74339.7$ has a lower
+objective value. This is an explicit local-solution policy, consistent with
+the paper's acknowledgement of initial-value dependence, rather than a
+guarantee of global minimization. `method` and `requested_method` are both
+`"newton"` in returned diagnostics.
 
 ## 5. Mapping into the ETKF transform
 
@@ -199,12 +313,13 @@ Diagnostics contain `l1`, `lambda_cov`, `zeta`, `objective`, `gradient`,
 ## 7. Verified deviations
 
 1. `da_py` copies DAPPER's dual scalar objective and hyperprior mode
-   correction, but uses SciPy solvers and explicit fallbacks.
+   correction, but uses SciPy Newton iteration in $l_1$ with no fallback.
+   The default `g=0` also differs from the paper's usual nullity $g=1$.
 2. It estimates the scale once, then reuses the ordinary symmetric ETKF
    covariance; it does not use Bocquet's non-quadratic Hessian covariance or
    the Hessian correction discussed by Raanes et al. after Eq. (49).
 3. DAPPER pads the innovation to the full observation dimension; `da_py`
-   sums only the SVD-rank coordinates.  The discarded part is independent of
+   sums only the thin-SVD coordinates.  The discarded part is independent of
    `l1`, so the optimizer is unchanged.
 4. The registry remains the operational source for examples; no metadata
    field is needed for this explanatory page.
@@ -247,7 +362,9 @@ the inverse-Hessian covariance represented by the returned ensemble.
 - Raanes, P. N., Bocquet, M., and Carrassi, A. (2019), “Adaptive covariance
   inflation in the ensemble Kalman filter by Gaussian scale mixtures,”
   *Quarterly Journal of the Royal Meteorological Society*, 145, 53–75.
-  <https://doi.org/10.1002/qj.3386>
+  <https://doi.org/10.1002/qj.3386>. Equations in Sect. 3 above were checked
+  against the [author manuscript, v4](https://arxiv.org/pdf/1801.08474v4),
+  Sects. 3.5--3.7; section numbering refers to that version.
 - DAPPER, `dapper.da_methods.ensemble` (`EnKF_N`, `effective_N`, and
   `hyperprior_coeffs`). <https://nansencenter.github.io/DAPPER/reference/da_methods/ensemble/>
 - Bishop, C. H., Etherton, B. J., and Majumdar, S. J. (2001), “Adaptive

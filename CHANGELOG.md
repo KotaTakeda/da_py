@@ -20,6 +20,32 @@ metadata.
 
 ## Unreleased
 
+## 0.8.0 - 2026-10-20
+
+### Changed
+
+- **API change:** `EnKFN` and `estimate_l1_enkfn_dual` now support only
+  `method="newton"`. The `brentq` and `bounded` options and all solver
+  fallbacks have been removed. Callers using either removed option must
+  switch to `method="newton"` (or omit `method`) and review convergence
+  diagnostics. Newton iteration selects a local stationary point; it does
+  not guarantee a global minimum.
+- A finite positive Newton estimate is returned even when the solver has
+  not converged, with `converged=False`. Callers requiring convergence must
+  check this diagnostic. Non-finite or non-positive estimates raise
+  `RuntimeError`; solver/input exceptions propagate without a fallback.
+- EnKF-N documentation now distinguishes the original paper equations,
+  variable transformations, objective normalization, and practical
+  hyperprior corrections. Whitened observation anomalies use
+  `\widetilde Y` to distinguish them from covariance `B`.
+
+### Fixed
+
+- Restore the missing term in the EnKF-N objective's second derivative
+  used by Newton iteration (issue #59). Regression tests check the
+  derivative against finite differences and demonstrate initial-value
+  dependence for a multimodal objective.
+
 ### Added
 
 - Representative `l96_enkfn` example: a Lorenz-96 (`Nx = 60`, periodic

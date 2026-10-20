@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import brentq, minimize_scalar, newton
+from scipy.optimize import newton
 
 from da.etkf import ETKF
 
@@ -53,6 +53,12 @@ def estimate_l1_enkfn_dual(
     The scalar optimized here is ``l1`` itself, the anomaly inflation factor.
     The corresponding covariance inflation and effective prior precision are
     ``lambda_cov = l1**2`` and ``zeta = (m - 1) / lambda_cov``.
+
+    Only ``method="newton"`` is supported. The local stationary point depends
+    on ``initial_l1``; convergence does not guarantee a global minimum.
+    Finite positive estimates are returned even without convergence, reported
+    by ``info["converged"]``. Invalid estimates raise ``RuntimeError``; there
+    is no fallback solver.
     """
     R = np.asarray(R, dtype=float)
     R_cholesky = np.linalg.cholesky(R)
@@ -96,8 +102,8 @@ def _estimate_l1_enkfn_dual_from_cholesky(
         raise ValueError("R must have shape (Ny, Ny)")
     if R_cholesky.shape != (ny, ny):
         raise ValueError("R_cholesky must have shape (Ny, Ny)")
-    if method not in {"newton", "brentq", "bounded"}:
-        raise ValueError("method must be one of 'newton', 'brentq', or 'bounded'")
+    if method != "newton":
+        raise ValueError("method must be 'newton'")
 
     m1 = m - 1
     if m1 <= 0:
@@ -129,76 +135,28 @@ def _estimate_l1_enkfn_dual_from_cholesky(
 
     def hess(l1):
         return (
-            8 * l1**2 * np.sum(s4 * du[:rk] ** 2 / dgn(l1) ** 3)
+            -2 * np.sum(s2 * du[:rk] ** 2 / dgn(l1) ** 2)
+            + 8 * l1**2 * np.sum(s4 * du[:rk] ** 2 / dgn(l1) ** 3)
             + 6 * eN / l1**4
             - 2 * cL / l1**2
         )
 
-    def solve_brentq():
-        lower = 1.0e-8
-        upper = 1.0
-        while grad(upper) < 0 and upper < 1.0e8:
-            upper *= 10.0
-        if grad(upper) < 0:
-            return None
-        l1, result = brentq(
-            grad,
-            lower,
-            upper,
-            xtol=xtol,
-            maxiter=max_iter,
-            full_output=True,
-        )
-        return float(l1), bool(result.converged), int(result.iterations)
-
-    def solve_bounded():
-        result = minimize_scalar(
-            objective,
-            bounds=(1.0e-8, 1.0e8),
-            method="bounded",
-            options={"xatol": xtol, "maxiter": max_iter},
-        )
-        return float(result.x), bool(result.success), int(result.nit)
-
-    used_method = method
-    if method == "newton":
-        try:
-            root, result = newton(
-                grad,
-                initial_l1,
-                fprime=hess,
-                tol=xtol,
-                maxiter=max_iter,
-                full_output=True,
-            )
-            l1 = float(root)
-            converged = bool(result.converged) and np.isfinite(l1) and l1 > 0
-            n_iter = int(result.iterations)
-        except (RuntimeError, OverflowError, ZeroDivisionError, ValueError):
-            converged = False
-            l1 = np.nan
-            n_iter = max_iter
-        if not converged:
-            used_method = "brentq"
-            solution = solve_brentq()
-            if solution is None:
-                used_method = "bounded"
-                l1, converged, n_iter = solve_bounded()
-            else:
-                l1, converged, n_iter = solution
-    elif method == "brentq":
-        solution = solve_brentq()
-        if solution is None:
-            used_method = "bounded"
-            l1, converged, n_iter = solve_bounded()
-        else:
-            l1, converged, n_iter = solution
-    else:
-        l1, converged, n_iter = solve_bounded()
-
+    # Keep finite positive estimates even when the iteration limit is reached.
+    # This is a local solve; convergence does not establish global optimality.
+    root, result = newton(
+        grad,
+        initial_l1,
+        fprime=hess,
+        tol=xtol,
+        maxiter=max_iter,
+        full_output=True,
+        disp=False,
+    )
+    l1 = float(root)
     if not np.isfinite(l1) or l1 <= 0:
-        used_method = "bounded"
-        l1, converged, n_iter = solve_bounded()
+        raise RuntimeError("EnKF-N Newton solve did not return a finite positive l1")
+    converged = bool(result.converged)
+    n_iter = int(result.iterations)
 
     lambda_cov = l1**2
     zeta = m1 / lambda_cov
@@ -211,7 +169,7 @@ def _estimate_l1_enkfn_dual_from_cholesky(
         "converged": converged,
         "n_iter": n_iter,
         "requested_method": method,
-        "method": used_method,
+        "method": "newton",
         "singular_values": s.copy(),
         "du": du.copy(),
         "eN": float(eN),

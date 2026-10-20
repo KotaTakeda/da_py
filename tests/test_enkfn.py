@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+import da.enkfn as enkfn_module
 from da.enkfn import EnKFN, estimate_l1_enkfn_dual
 from da.etkf import ETKF
 
@@ -91,13 +92,62 @@ def test_enkfn_initialize_resets_inflation_diagnostics():
     assert enkfn.inflation_diagnostics == []
 
 
-def test_estimate_l1_enkfn_dual_bounded_option_handles_large_innovation():
+@pytest.mark.parametrize("method", ["brentq", "bounded"])
+def test_estimate_l1_enkfn_dual_rejects_removed_solvers(method):
+    with pytest.raises(ValueError, match="method must be 'newton'"):
+        estimate_l1_enkfn_dual(
+            np.array([[-1.0, 1.0]]), np.array([2.0]), np.eye(1), method=method
+        )
+
+
+def test_estimate_l1_enkfn_dual_hessian_matches_gradient_difference(monkeypatch):
+    original_newton = enkfn_module.newton
+
+    def checked_newton(func, x0, *, fprime, **kwargs):
+        for value in [0.5, 1.0, 2.0]:
+            step = 1.0e-5 * value
+            difference = (func(value + step) - func(value - step)) / (2 * step)
+            np.testing.assert_allclose(fprime(value), difference, rtol=1.0e-7)
+        return original_newton(func, x0, fprime=fprime, **kwargs)
+
+    monkeypatch.setattr(enkfn_module, "newton", checked_newton)
+    _, info = estimate_l1_enkfn_dual(
+        np.array([[-1.0, 1.0]]), np.array([2.0]), np.eye(1)
+    )
+    assert info["converged"]
+    assert abs(info["gradient"]) < 1.0e-8
+
+
+def test_estimate_l1_enkfn_dual_retains_unconverged_positive_iterate():
+    l1, info = estimate_l1_enkfn_dual(
+        np.array([[-1.0, 1.0]]), np.array([2.0]), np.eye(1), max_iter=1
+    )
+    assert np.isfinite(l1) and l1 > 0
+    assert not info["converged"]
+    assert info["n_iter"] == 1
+    assert info["method"] == info["requested_method"] == "newton"
+
+
+@pytest.mark.parametrize("root", [float("nan"), float("inf"), 0.0, -1.0])
+def test_estimate_l1_enkfn_dual_rejects_invalid_newton_result(monkeypatch, root):
+    def invalid_newton(*args, **kwargs):
+        return root, None
+
+    monkeypatch.setattr(enkfn_module, "newton", invalid_newton)
+    with pytest.raises(RuntimeError, match="finite positive l1"):
+        estimate_l1_enkfn_dual(
+            np.array([[-1.0, 1.0]]), np.array([2.0]), np.eye(1)
+        )
+
+
+def test_estimate_l1_enkfn_dual_multimodal_solution_depends_on_initial_value():
     dY = np.array([[-7.1e-5, 7.1e-5]])
     dy = np.array([10.0])
-    R = np.array([[1.0]])
+    R = np.eye(1)
+    local, local_info = estimate_l1_enkfn_dual(dY, dy, R)
+    other, other_info = estimate_l1_enkfn_dual(dY, dy, R, initial_l1=74000.0)
 
-    l1, info = estimate_l1_enkfn_dual(dY, dy, R, method="bounded")
-
-    assert info["requested_method"] == "bounded"
-    assert info["method"] == "bounded"
-    assert l1 > 1.0e4
+    assert local_info["converged"] and other_info["converged"]
+    np.testing.assert_allclose(local, 1.0, atol=1.0e-6)
+    np.testing.assert_allclose(other, 74339.70337, rtol=1.0e-6)
+    assert other_info["objective"] < local_info["objective"] - 50
