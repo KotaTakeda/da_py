@@ -17,3 +17,4 @@ class EnsembleTransformParticleFilter(ParticleFilter):
         S = self.m * T  # (M, M) = (source, target)
         # assert np.allclose(S.sum(axis=0), 1.0)
         self.X = S.T @ self.X  # (M, 2)
+        self.W = b

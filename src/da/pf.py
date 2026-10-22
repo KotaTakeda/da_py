@@ -61,14 +61,18 @@ class ParticleFilter(object):
         self.Xf.append(self.X.copy())
 
     def update(self, y_obs):
+        """Apply one likelihood to the prior weights, then optionally resample.
+
+        After resampling, particles represent the posterior with uniform
+        weights. The saved mean uses that same posterior representation.
+        """
         self._calculate_weights(y_obs)
 
         if self._caluculate_eff(self.W) < self.N_thr * self.m:
             self._resample()
-            self._calculate_weights(y_obs)
 
         self.x.append(self.W @ self.X)
-        self.Xa.append(self.X)
+        self.Xa.append(self.X.copy())
 
     def _resample(self):
         # Ref: Doucet, A., Johansen, A.M., n.d. A Tutorial on Particle Filtering and Smoothing: Fifteen years later. in Stoyanov, J., 2012. The Oxford Handbook of Nonlinear Filtering. Journal of the Royal Statistical Society: Series A (Statistics in Society) 175, 824–825. https://doi.org/10.1111/j.1467-985X.2012.01045_6.x
@@ -133,9 +137,13 @@ class ParticleFilter(object):
         dY = y_obs[None, :] - np.stack([np.asarray(self.h(x)) for x in self.X])
         nll = 0.5 * np.einsum("ij,jk,ik->i", dY, self.Rinv, dY)
 
-        # normalize
-        nll_min = np.min(nll)
-        w_shift = np.exp(-(nll - nll_min))
+        # Sequential Bayes update in log space; zero prior mass stays zero.
+        with np.errstate(divide="ignore"):
+            log_weights = np.log(self.W) - nll
+        maximum = np.max(log_weights)
+        if not np.isfinite(maximum):
+            raise ValueError("particle posterior has no finite positive mass")
+        w_shift = np.exp(log_weights - maximum)
 
         self.W = w_shift / w_shift.sum()
 
