@@ -93,6 +93,8 @@ class LETKF(ETKF):
 
         # Save the analysis mean
         self.x.append(self.X.mean(axis=0))
+        if self.store_ensemble:
+            self.Xa.append(self.X.copy())
 
     # 本体
     def _transform_each(self, i, dy, dY, dXf):
