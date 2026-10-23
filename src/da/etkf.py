@@ -179,15 +179,15 @@ class ETKF:
 
         # transformの準備
         dXf = Xf - xf[:, None]  # (Nx, m)
+        Yf = self._apply_H(Xf)
         if not self.project_covariance:
-            Yf = self._apply_H(Xf)
             dYf = Yf - Yf.mean(axis=1, keepdims=True)
         else:
             dXf = self._covariance_projection @ dXf
             dXf = dXf - dXf.mean(axis=1, keepdims=True)
             dYf = self._apply_H(dXf)
             dYf = dYf - dYf.mean(axis=1, keepdims=True)
-        dy = y_obs - self._apply_H(xf)
+        dy = y_obs - Yf.mean(axis=1)
 
         # transform
         Xa = xf[:, None] + self._transform_T(dy, dYf, dXf)  # (Nx, m)
