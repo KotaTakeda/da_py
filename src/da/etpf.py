@@ -1,5 +1,6 @@
 import numpy as np
 import ot
+
 from .pf import ParticleFilter
 
 

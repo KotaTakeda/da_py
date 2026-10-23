@@ -36,7 +36,7 @@ The generic primitives and helpers are re-exported below unchanged, with two
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 
 # Re-export the vendored, domain-independent figure API unchanged so callers
 # can do ``from da import viz; viz.line_plot(...)`` without reaching into the
@@ -44,7 +44,7 @@ from functools import lru_cache
 # package's own ``__all__`` so a refreshed vendored copy is re-exported here
 # without having to keep a second hand-maintained list in sync.
 from . import _research_figures as _research_figures
-from ._research_figures import *  # noqa: F401,F403
+from ._research_figures import *
 from ._research_figures import __all__ as _RESEARCH_FIGURES_ALL
 
 # da_py's default categorical cycle (see COLOR_CYCLES in the vendored
@@ -78,7 +78,7 @@ def multi_panel(nrows, ncols, *, cycle=DEFAULT_COLOR_CYCLE, **kwargs):
     return _research_figures.multi_panel(nrows, ncols, cycle=cycle, **kwargs)
 
 
-@lru_cache(maxsize=None)
+@cache
 def vorticity_cmap(name: str = "icefire"):
     """Resolve a colormap for signed vorticity fields, keeping seaborn optional.
 
@@ -97,4 +97,5 @@ def vorticity_cmap(name: str = "icefire"):
     return sns.color_palette("icefire", as_cmap=True)
 
 
-__all__ = [*_RESEARCH_FIGURES_ALL, "vorticity_cmap", "DEFAULT_COLOR_CYCLE"]
+__all__ = list(_RESEARCH_FIGURES_ALL)
+__all__.extend(["DEFAULT_COLOR_CYCLE", "vorticity_cmap"])

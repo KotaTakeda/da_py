@@ -1,6 +1,5 @@
 import numpy as np
 
-
 # Lorenz63
 # b, r, s を指定した関数lorenz(t,x)を返す
 # def gen_l63(s, r, b):

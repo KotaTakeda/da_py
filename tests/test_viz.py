@@ -11,11 +11,11 @@ import pytest
 
 matplotlib = pytest.importorskip("matplotlib")
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
-from da import viz  # noqa: E402
-from da.loss import loss_rms  # noqa: E402
-from da.visualize import plot_loss  # noqa: E402
+from da import viz
+from da.loss import loss_rms
+from da.visualize import plot_loss
 
 
 def test_bundled_publication_style_is_available():

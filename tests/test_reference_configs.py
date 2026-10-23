@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "examples" / "archive"))
 
-from nse2d_reference_configs import REFERENCE_CONFIGS  # noqa: E402
+from nse2d_reference_configs import REFERENCE_CONFIGS
 
 
 def test_expected_configs_present():

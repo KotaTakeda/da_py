@@ -3,11 +3,17 @@
 import argparse
 
 import numpy as np
+from _common import (
+    add_common_args,
+    advance,
+    attractor_ensemble,
+    l63_step,
+    print_result,
+    rmse,
+)
 
 from da.exkf import ExKF
 from da.var3d import Var3D
-
-from _common import add_common_args, advance, attractor_ensemble, l63_step, print_result, rmse
 
 
 def parse_args():
