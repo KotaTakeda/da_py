@@ -5,6 +5,7 @@ import pytest
 
 from da.letkf import LETKF
 
+
 def advance(x, dt):
     return x + dt
 
