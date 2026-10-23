@@ -4,6 +4,7 @@ import pytest
 from da.etkf import ETKF
 from da.letkf import LETKF
 
+
 def advance(x, dt):
     return x + dt
 

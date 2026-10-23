@@ -1,10 +1,11 @@
 # import multiprocessing as multi
-from functools import cache, partial
+from functools import partial
 from multiprocessing import get_context
 
 import numpy as np
-from .localization import calc_dist, gaspari_cohn
+
 from .etkf import ETKF
+from .localization import calc_dist, gaspari_cohn
 
 # ==========================================
 # LocalEnsembleTransformKalmanFilter(LETKF)
@@ -48,6 +49,7 @@ class LETKF(ETKF):
         multi_process=False,
         Q=None,
         rng=None,
+        observation_positions=None,
     ):
         """ "
         Args:
@@ -61,7 +63,14 @@ class LETKF(ETKF):
         - multi_process: bool, whether to use multi processing for loop over state variables
         - Q, rng: model-noise covariance and Generator, applied per forecast
           step via the inherited ETKF forecast (see da.etkf.ETKF)
+        - observation_positions: length-Ny locations in grid-index units on
+          the periodic ring [0, Nx). Inferred for one-hot selection matrices;
+          required for other matrices or callable observation operators.
         """
+        if np.isnan(c) or c <= 0:
+            raise ValueError("c must be positive (infinity disables localization)")
+        if localization != "gaspari-cohn":
+            raise ValueError("localization must be 'gaspari-cohn'")
         R = np.asarray(R, dtype=float)
         if R.ndim != 2 or R.shape[0] != R.shape[1] or not np.all(np.isfinite(R)):
             raise ValueError("R must be a finite square covariance matrix")
@@ -77,6 +86,30 @@ class LETKF(ETKF):
         self.c = c
         self.localization = localization
         self.multi_process = multi_process
+        self._observation_positions_input = observation_positions
+
+    def initialize(self, X_0):
+        super().initialize(X_0)
+        ny = self.R.shape[0]
+        positions = self._observation_positions_input
+        if self.linear_obs and self.H.shape != (ny, self.Nx):
+            raise ValueError("H must have shape (Ny, Nx) compatible with R and X")
+        if positions is None:
+            if not self.linear_obs or not (
+                np.all((self.H == 0) | (self.H == 1))
+                and np.all(np.sum(self.H, axis=1) == 1)
+            ):
+                raise ValueError(
+                    "observation_positions is required unless H is a one-hot "
+                    "selection matrix; supply physically meaningful local positions"
+                )
+            positions = np.argmax(self.H, axis=1)
+        positions = np.asarray(positions, dtype=float)
+        if positions.shape != (ny,) or not np.all(np.isfinite(positions)):
+            raise ValueError("observation_positions must be a finite length-Ny vector")
+        if np.any(positions < 0) or np.any(positions >= self.Nx):
+            raise ValueError("observation_positions must lie in [0, Nx)")
+        self.observation_positions = positions.copy()
 
     # 更新/解析
     def update(self, y_obs):
@@ -121,13 +154,12 @@ class LETKF(ETKF):
             self.Rinv = orig_Rinv
 
     # localization用の関数
-    @cache
     def _rho(self, i):
         return np.array(
-            [gaspari_cohn(calc_dist(i, j, J=self.Nx), self.c) for j in range(self.Nx)]
+            [gaspari_cohn(calc_dist(i, j, J=self.Nx), self.c)
+             for j in self.observation_positions]
         )
 
-    @cache
     def _locR(self, i):
         """Local precision D R^{-1} D, D = diag(sqrt(rho)).
 
