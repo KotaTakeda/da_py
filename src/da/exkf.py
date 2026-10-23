@@ -21,6 +21,10 @@ class ExKF:
     The forecast covariance uses a tangent-linear approximation of the
     discrete forecast map. If ``jacobian`` is omitted, a finite-difference
     approximation is used.
+
+    Consecutive ``forecast`` calls compose from the most recent forecast or
+    analysis state. Each covariance step uses the Jacobian at that starting
+    state and adds Q once. ``initialize`` resets state and diagnostic histories.
     """
 
     def __init__(self, M, H, R, Q=None, jacobian=None):
@@ -44,6 +48,9 @@ class ExKF:
 
     def initialize(self, x_0, P_0):
         self.x_a = np.asarray(x_0, dtype=float).copy()
+        self._current_state = self.x_a.copy()
+        self.x_f_state = self.x_a.copy()
+        self.x, self.x_f, self.P_f, self.P_a = [], [], [], []
         self.P = np.asarray(P_0, dtype=float).copy()
         self.Nx = self.x_a.size
         if self.Q is None:
@@ -51,10 +58,11 @@ class ExKF:
 
     def forecast(self, dt):
         if self.jacobian is None:
-            F = finite_difference_jacobian(lambda x: self.M(x, dt), self.x_a)
+            F = finite_difference_jacobian(lambda x: self.M(x, dt), self._current_state)
         else:
-            F = np.asarray(self.jacobian(self.x_a, dt), dtype=float)
-        self.x_f_state = np.asarray(self.M(self.x_a, dt), dtype=float)
+            F = np.asarray(self.jacobian(self._current_state, dt), dtype=float)
+        self.x_f_state = np.asarray(self.M(self._current_state, dt), dtype=float)
+        self._current_state = self.x_f_state.copy()
         self.P = F @ self.P @ F.T + self.Q
         self.x_f.append(self.x_f_state.copy())
         self.P_f.append(self.P.copy())
@@ -65,6 +73,7 @@ class ExKF:
         S = self.H @ self.P @ self.H.T + self.R
         K = self.P @ self.H.T @ np.linalg.inv(S)
         self.x_a = self.x_f_state + K @ innovation
+        self._current_state = self.x_a.copy()
         ident = np.eye(self.Nx)
         self.P = (
             (ident - K @ self.H) @ self.P @ (ident - K @ self.H).T + K @ self.R @ K.T
