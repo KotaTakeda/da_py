@@ -1,6 +1,6 @@
 # import multiprocessing as multi
 from functools import cache, partial
-from multiprocessing import get_context
+from multiprocessing import get_all_start_methods, get_context
 
 import numpy as np
 from .localization import calc_dist, gaspari_cohn
@@ -81,10 +81,13 @@ class LETKF(ETKF):
 
         # 各成分でループ
         if self.multi_process:
+            if "fork" not in get_all_start_methods():
+                raise NotImplementedError("multi_process=True requires fork support")
             n_process = 4  # multi.cpu_count()
             with get_context("fork").Pool(n_process) as pl:
                 process = partial(self._transform_each, dy=dy, dY=dYf, dXf=dXf)
-                self.X = np.array(pl.map(process, list(range(self.Nx)))).T
+                increments = np.concatenate(pl.map(process, range(self.Nx)), axis=0)
+                self.X = (xf[:, None] + increments).T
                 pl.close()
                 pl.join()
         else:
