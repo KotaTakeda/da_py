@@ -1,10 +1,11 @@
 # import multiprocessing as multi
-from functools import cache, partial
+from functools import partial
 from multiprocessing import get_context
 
 import numpy as np
-from .localization import calc_dist, gaspari_cohn
+
 from .etkf import ETKF
+from .localization import calc_dist, gaspari_cohn
 
 # ==========================================
 # LocalEnsembleTransformKalmanFilter(LETKF)
@@ -112,13 +113,11 @@ class LETKF(ETKF):
         return dXi # (1, m)
 
     # localization用の関数
-    @cache
     def _rho(self, i):
         return np.array(
             [gaspari_cohn(calc_dist(i, j, J=self.Nx), self.c) for j in range(self.Nx)]
         )
 
-    @cache
     def _locR(self, i):
         """"rho(j - i) * Rinv [j] """
         return self._rho(i) * self.Rinv  # (Ny, Ny)

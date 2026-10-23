@@ -29,7 +29,7 @@ def test_objective_gradient_and_hessian_finite_differences():
     numeric_hessian = np.column_stack(
         [
             _finite_gradient(
-                lambda z: _objective_gradient_hessian(z, dY, dy, Rinv)[1][j], w
+                lambda z, j=j: _objective_gradient_hessian(z, dY, dy, Rinv)[1][j], w
             )
             for j in range(w.size)
         ]

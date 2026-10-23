@@ -18,10 +18,6 @@ import csv
 import os
 
 import numpy as np
-
-from da.etkf import ETKF
-from da.l96 import two_thirds_observation
-
 from _common import (
     add_common_args,
     attractor_ensemble,
@@ -31,6 +27,9 @@ from _common import (
     rmse,
     truth_and_observations,
 )
+
+from da.etkf import ETKF
+from da.l96 import two_thirds_observation
 
 
 def parse_args():
@@ -116,7 +115,7 @@ def main():
     args = parse_args().parse_args()
     spinup = args.spinup_cycles if args.spinup_cycles is not None else args.cycles // 2
 
-    H, observed = two_thirds_observation(args.dimension)
+    H, _observed = two_thirds_observation(args.dimension)
     R = args.obs_noise_variance * np.eye(H.shape[0])
     x0 = 8.0 * np.ones(args.dimension)
     x0[0] += 0.01

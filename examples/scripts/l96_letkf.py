@@ -3,10 +3,16 @@
 import argparse
 
 import numpy as np
+from _common import (
+    add_common_args,
+    attractor_ensemble,
+    l96_step,
+    print_result,
+    rmse,
+    truth_and_observations,
+)
 
 from da.letkf import LETKF
-
-from _common import add_common_args, attractor_ensemble, l96_step, print_result, rmse, truth_and_observations
 
 
 def parse_args():

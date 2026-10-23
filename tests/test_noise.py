@@ -225,7 +225,7 @@ def test_enkfn_and_letkf_accept_Q():
 
 
 def test_constructor_validation_errors():
-    M = lambda x, dt: x  # noqa: E731
+    M = lambda x, dt: x
     H = R = np.eye(2)
     with pytest.raises(TypeError, match="numpy.random.Generator"):
         ETKF(M, H, R, Q=np.eye(2))  # Q without rng

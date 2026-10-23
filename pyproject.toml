@@ -31,7 +31,7 @@ dev = [
     "pandas",
     "plotly",
     "pytest",
-    "ruff",
+    "ruff==0.17.2",
     "seaborn",
     "tqdm",
 ]
@@ -49,4 +49,14 @@ where = ["src"]
 line-length = 88
 
 [tool.ruff]
+required-version = "==0.17.2"
+target-version = "py310"
+# Use this pinned release's default rules; version updates are reviewed with
+# their rule-set changes. Include supported code/tutorials, not archived work.
+include = ["*.py", "*.pyi", "*.ipynb", "**/pyproject.toml"]
 extend-exclude = ["examples/archive"]
+
+[tool.ruff.lint.per-file-ignores]
+# Keep the vendored initializer verbatim, including upstream import/export
+# grouping; see its _VENDORED.md. Other checks still apply to this file.
+"src/da/viz/_research_figures/__init__.py" = ["I001", "RUF022"]

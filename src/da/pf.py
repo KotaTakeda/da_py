@@ -5,7 +5,7 @@ Particle Filter (Sequential Monte Carlo/Sequential Importance Resampling)
 import numpy as np
 
 
-class ParticleFilter(object):
+class ParticleFilter:
     def __init__(
         self,
         M,
