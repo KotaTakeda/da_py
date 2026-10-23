@@ -2,6 +2,7 @@ import numpy as np
 
 from da.letkf import LETKF
 
+
 def advance(x, dt):
     return x + dt
 
