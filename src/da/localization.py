@@ -16,7 +16,7 @@ def gaspari_cohn(d, c):
     x = d / c
     if d <= c:
         return polynomial(x, [1, 0, -5 / 3, 5 / 8, 1 / 2, -1 / 4])
-    elif d < 2 * c:
+    elif c < d < 2 * c:
         return polynomial(x, [-2 / 3, 4, -5, 5 / 3, 5 / 8, -1 / 2, 1 / 12]) / x
     else:
         return 0

@@ -3,8 +3,9 @@ from functools import partial
 from multiprocessing import get_context
 
 import numpy as np
-from .localization import calc_dist, gaspari_cohn
+
 from .etkf import ETKF
+from .localization import calc_dist, gaspari_cohn
 
 # ==========================================
 # LocalEnsembleTransformKalmanFilter(LETKF)

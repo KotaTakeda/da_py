@@ -6,6 +6,7 @@ from da.l96 import two_thirds_observation
 from da.letkf import LETKF
 from da.localization import calc_dist, gaspari_cohn
 
+
 def advance(x, dt):
     return x + dt
 
