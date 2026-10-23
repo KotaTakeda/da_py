@@ -139,15 +139,12 @@ class PO:
         xf = Xf.mean(axis=1)
 
         # NOTE: この実装ではadditive inflationは使えない
-        dXf = Xf - xf[:, None]  # (Nx, m)
+        dXf = self.alpha * (Xf - xf[:, None])  # (Nx, m)
+        Xf = xf[:, None] + dXf
+        # Evaluate nonlinear observations on the inflated state ensemble.
+        # The gain and each particle correction use this same joint ensemble.
         Yf = self._apply_H(Xf)
         dYf = Yf - Yf.mean(axis=1, keepdims=True)  # (Ny, m)
-
-        if self.alpha > 1.0:  # この意味のmultiplicative inflation
-            # Multiplicative alpha inflates anomalies: A -> alpha*A, Pf -> alpha^2*Pf.
-            dXf *= self.alpha
-            dYf *= self.alpha
-            # Xf = xf[:, None] + dXf
 
         # K = dXf dYf^T (dYf dYf^T + (m-1) R)^{-1}, evaluated by solving the
         # symmetric system instead of forming the inverse explicitly.
