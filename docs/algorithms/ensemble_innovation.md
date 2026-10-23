@@ -14,3 +14,17 @@ operators implement an ensemble regression approximation; exact linear
 Gaussian Kalman formulas and the linear-observation EnKF-N derivation do not
 thereby become exact nonlinear posterior formulas. LETKF additionally needs
 physically meaningful observation positions for localization.
+
+## Covariance projection
+
+`ETKF(project_covariance=True)` requires a finite linear NumPy matrix `H`.
+The projector `H^+ H` is defined from that matrix; no Jacobian or nonlinear
+projection is inferred. Passing any callable `H` with projection enabled raises
+`ValueError` in the constructor, before initialization or observation evaluation.
+This also rejects linear callables because their matrix is not supplied.
+
+A linear matrix with projection enabled retains the projected Kalman covariance
+update. A nonlinear callable with `project_covariance=False` (the default) remains
+supported with the ensemble observation mean described above. Tests in
+`test_etkf_covariance_projection.py` and `test_nonlinear_innovation.py` cover
+these supported combinations and the explicit rejection.

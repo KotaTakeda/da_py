@@ -140,11 +140,12 @@ def test_projected_anomalies_are_recentered_for_large_offset_ensemble():
     np.testing.assert_allclose(captured["dY"].mean(axis=1), 0.0, rtol=0.0, atol=1.0e-15)
 
 
-def test_projection_rejects_callable_observation_operator():
-    with pytest.raises(NotImplementedError, match="linear matrix"):
+@pytest.mark.parametrize("observation", [lambda x: x[:1], lambda x: x[:1] ** 2])
+def test_projection_rejects_callable_observation_operator(observation):
+    with pytest.raises(ValueError, match="linear matrix"):
         ETKF(
             _identity_model,
-            lambda x: x[:1],
+            observation,
             np.array([[1.0]]),
             project_covariance=True,
         )
