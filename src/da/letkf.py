@@ -71,6 +71,16 @@ class LETKF(ETKF):
             raise ValueError("c must be positive (infinity disables localization)")
         if localization != "gaspari-cohn":
             raise ValueError("localization must be 'gaspari-cohn'")
+        R = np.asarray(R, dtype=float)
+        if R.ndim != 2 or R.shape[0] != R.shape[1] or not np.all(np.isfinite(R)):
+            raise ValueError("R must be a finite square covariance matrix")
+        if not np.allclose(R, R.T, rtol=1e-12, atol=1e-14):
+            raise ValueError("R must be symmetric positive definite")
+        R = 0.5 * (R + R.T)
+        try:
+            np.linalg.cholesky(R)
+        except np.linalg.LinAlgError as exc:
+            raise ValueError("R must be symmetric positive definite") from exc
         super().__init__(M, H, R, alpha, store_ensemble, Q=Q, rng=rng)
 
         self.c = c
@@ -137,12 +147,11 @@ class LETKF(ETKF):
         self.Rinv = locRinv
 
         # transform i-th component of dXf
-        dXfi = dXf[i, :][None, :] # (1, m)
-        dXi = self._transform_T(dy, dY, dXfi)
-
-        # restore Rinv
-        self.Rinv = orig_Rinv
-        return dXi # (1, m)
+        try:
+            dXfi = dXf[i, :][None, :]  # (1, m)
+            return self._transform_T(dy, dY, dXfi)
+        finally:
+            self.Rinv = orig_Rinv
 
     # localization用の関数
     def _rho(self, i):
@@ -152,8 +161,13 @@ class LETKF(ETKF):
         )
 
     def _locR(self, i):
-        """"rho(j - i) * Rinv [j] """
-        return self._rho(i) * self.Rinv  # (Ny, Ny)
+        """Local precision D R^{-1} D, D = diag(sqrt(rho)).
+
+        Congruence preserves symmetry and positive semidefiniteness, including
+        correlated observation errors. For diagonal R this is rho / diag(R).
+        """
+        weights = np.sqrt(np.clip(self._rho(i), 0.0, 1.0))
+        return weights[:, None] * self.Rinv * weights[None, :]
 
     # def calc_sqrtm(self, mat):
     #     return self._symmetric(sqrtm(self._symmetric(mat)))
