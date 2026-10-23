@@ -120,7 +120,7 @@ class LETKF(ETKF):
         dXf = Xf - xf[:, None]  # (Nx, m)
         Yf = self._apply_H(Xf)
         dYf = Yf - Yf.mean(axis=1, keepdims=True)
-        dy = y_obs - self._apply_H(xf)
+        dy = y_obs - Yf.mean(axis=1)
 
         # 各成分でループ
         if self.multi_process:

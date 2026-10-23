@@ -59,14 +59,15 @@ class ETKF:
           analysis onto range(H.T) using P_H = H^+ @ H. The analysis increment
           and anomalies then lie in range(H.T), while the forecast mean and
           forecast ensemble remain unchanged. Supported only for a finite
-          linear matrix observation operator H.
+          linear matrix observation operator H. Callable H with projection enabled
+          raises ValueError during construction, even if the callable is linear.
         """
         self.M = M
         self.H = H
         self.linear_obs = isinstance(H, np.ndarray)
         self.project_covariance = project_covariance
         if project_covariance and not self.linear_obs:
-            raise NotImplementedError(
+            raise ValueError(
                 "project_covariance requires a linear matrix observation operator H; "
                 "callable observation operators are not supported"
             )
@@ -179,15 +180,15 @@ class ETKF:
 
         # transformの準備
         dXf = Xf - xf[:, None]  # (Nx, m)
+        Yf = self._apply_H(Xf)
         if not self.project_covariance:
-            Yf = self._apply_H(Xf)
             dYf = Yf - Yf.mean(axis=1, keepdims=True)
         else:
             dXf = self._covariance_projection @ dXf
             dXf = dXf - dXf.mean(axis=1, keepdims=True)
             dYf = self._apply_H(dXf)
             dYf = dYf - dYf.mean(axis=1, keepdims=True)
-        dy = y_obs - self._apply_H(xf)
+        dy = y_obs - Yf.mean(axis=1)
 
         # transform
         Xa = xf[:, None] + self._transform_T(dy, dYf, dXf)  # (Nx, m)

@@ -224,7 +224,7 @@ class EnKFN(ETKF):
         dXf = Xf - xf[:, None]
         Yf = self._apply_H(Xf)
         dYf = Yf - Yf.mean(axis=1, keepdims=True)
-        dy = y_obs - self._apply_H(xf)
+        dy = y_obs - Yf.mean(axis=1)
 
         l1, info = _estimate_l1_enkfn_dual_from_cholesky(
             dYf,
