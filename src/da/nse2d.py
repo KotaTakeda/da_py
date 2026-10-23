@@ -135,10 +135,12 @@ class NSE2DTorus:
     def _make_dealias_mask(self):
         if self.config.dealias in {False, "pad"}:
             return np.ones(self.shape, dtype=bool)
-        mx = np.fft.fftfreq(self.nx) * self.nx
-        my = np.fft.fftfreq(self.ny) * self.ny
+        mx = np.rint(np.fft.fftfreq(self.nx) * self.nx).astype(int)
+        my = np.rint(np.fft.fftfreq(self.ny) * self.ny).astype(int)
         ix, iy = np.meshgrid(mx, my)
-        return (np.abs(ix) <= self.nx / 3) & (np.abs(iy) <= self.ny / 3)
+        # Strict cutoff: retaining N/3 would let a boundary pair alias back
+        # onto -N/3. Integer arithmetic avoids rounding at that boundary.
+        return (3 * np.abs(ix) < self.nx) & (3 * np.abs(iy) < self.ny)
 
     def _make_pad_resolved_mask(self):
         mask = np.ones(self.shape, dtype=bool)
@@ -353,14 +355,23 @@ class NSE2DTorus:
         return value
 
     def rhs(self, omega):
+        """Vorticity tendency with optional dealiased nonlinear advection.
+
+        The 2/3 rule projects both inputs and output of the quadratic term
+        onto |kx| < nx/3, |ky| < ny/3 (integer Fourier modes). Linear
+        diffusion/drag and forcing still act on the full supplied state.
+        """
         omega = self._as_state(omega)
         omega_hat = self.fft(omega)
         if self.config.dealias == "pad":
             adv_hat = self._advective_term_hat_padded(omega_hat)
         else:
-            u, v = self.velocity(omega)
-            omega_x = self.ifft(1j * self.kx * omega_hat)
-            omega_y = self.ifft(1j * self.ky * omega_hat)
+            nonlinear_hat = np.where(self._dealias_mask, omega_hat, 0.0)
+            psi_hat = nonlinear_hat * self._inv_k2
+            u = self.ifft(1j * self.ky * psi_hat)
+            v = self.ifft(-1j * self.kx * psi_hat)
+            omega_x = self.ifft(1j * self.kx * nonlinear_hat)
+            omega_y = self.ifft(1j * self.ky * nonlinear_hat)
             adv_hat = np.fft.fft2(u * omega_x + v * omega_y)
             adv_hat = np.where(self._dealias_mask, adv_hat, 0.0)
         diffusion = self.ifft(-self.config.viscosity * self.k2 * omega_hat)
