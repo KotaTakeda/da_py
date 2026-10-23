@@ -10,7 +10,7 @@ from da.letkf import LETKF
 @pytest.mark.parametrize("nx", [1, 2])
 def test_zero_ensemble_observation_innovation_preserves_mean(filter_class, nx):
     X = np.array([[0.0, 1.0], [2.0, 3.0], [1.0, -1.0]])[:, :nx]
-    H = lambda x: x**2  # noqa: E731
+    H = lambda x: x**2
     options = {"observation_positions": np.arange(nx)} if filter_class is LETKF else {}
     filt = filter_class(lambda x, dt: x, H, np.eye(nx), **options)
     filt.initialize(X)
